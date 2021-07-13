@@ -406,6 +406,17 @@ fn simple_product() {
 }
 
 #[test]
+fn simple_bitand() {
+    type M = Matrix2x3<u8>;
+
+    let a = M::new(0x1, 0x2, 0x3, 0x4, 0x5, 0x6);
+    let b = M::new(0x5, 0x5, 0xF, 0x4, 0x0, 0x3);
+    let expected = M::new(0x1, 0x0, 0x3, 0x4, 0x0, 0x2);
+
+    assert_eq!(a & b, expected);
+}
+
+#[test]
 fn cross_product_vector_and_row_vector() {
     let v1 = Vector3::new(1.0, 2.0, 3.0);
     let v2 = Vector3::new(1.0, 5.0, 7.0);

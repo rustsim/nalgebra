@@ -1,7 +1,7 @@
 use num::{One, Zero};
 use std::iter;
 use std::ops::{
-    Add, AddAssign, Div, DivAssign, Index, IndexMut, Mul, MulAssign, Neg, Sub, SubAssign,
+    Add, AddAssign, BitAnd, Div, DivAssign, Index, IndexMut, Mul, MulAssign, Neg, Sub, SubAssign,
 };
 
 use simba::scalar::{ClosedAdd, ClosedDiv, ClosedMul, ClosedNeg, ClosedSub};
@@ -856,5 +856,27 @@ where
 {
     fn product<I: Iterator<Item = &'a OMatrix<T, D, D>>>(iter: I) -> OMatrix<T, D, D> {
         iter.fold(Matrix::one(), |acc, x| acc * x)
+    }
+}
+
+impl<N, R, C, S> BitAnd<Matrix<N, R, C, S>> for Matrix<N, R, C, S>
+where
+    R: Dim,
+    C: Dim,
+    N: Scalar + BitAnd<N, Output = N>,
+    S: Storage<N, R, C>,
+    DefaultAllocator: Allocator<N, R, C, Buffer = S>,
+{
+    type Output = Matrix<N, R, C, S>;
+
+    #[inline]
+    fn bitand(self, rhs: Matrix<N, R, C, S>) -> Self::Output {
+        assert_eq!(
+            self.shape(),
+            rhs.shape(),
+            "Matrix bitand dimensions mismatch."
+        );
+        let mut rhs = rhs.into_owned();
+        self.zip_map(&mut rhs, |a, b| a.bitand(b))
     }
 }
