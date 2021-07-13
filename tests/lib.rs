@@ -29,6 +29,7 @@ mod linalg;
 #[cfg(all(feature = "debug", feature = "compare", feature = "rand"))]
 #[cfg(feature = "proptest-support")]
 mod proptest;
+mod third_party;
 
 //#[cfg(all(feature = "debug", feature = "compare", feature = "rand"))]
 //#[cfg(feature = "sparse")]
