@@ -9,7 +9,8 @@ use std::io::{Result as IOResult, Write};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 #[cfg(feature = "serde-serialize-no-std")]
-use crate::base::storage::Owned;
+use crate::base::storage::InnerOwned;
+use crate::storage::InnerOwned;
 
 #[cfg(feature = "abomonation-serialize")]
 use abomonation::Abomonation;
@@ -53,29 +54,26 @@ use crate::geometry::Point;
 /// # Conversion
 /// * [Conversion to a matrix <span style="float:right;">`matrix`, `to_homogeneous`…</span>](#conversion-to-a-matrix)
 ///
-#[repr(C)]
+#[repr(transparent)]
 #[derive(Debug)]
 pub struct Rotation<T, const D: usize> {
     matrix: SMatrix<T, D, D>,
 }
 
-impl<T: Scalar + hash::Hash, const D: usize> hash::Hash for Rotation<T, D>
+impl<T: hash::Hash, const D: usize> hash::Hash for Rotation<T, D>
 where
-    <DefaultAllocator as Allocator<T, Const<D>, Const<D>>>::Buffer: hash::Hash,
+    InnerOwned<T, Const<D>, Const<D>>: hash::Hash,
 {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         self.matrix.hash(state)
     }
 }
 
-impl<T: Scalar + Copy, const D: usize> Copy for Rotation<T, D> where
-    <DefaultAllocator as Allocator<T, Const<D>, Const<D>>>::Buffer: Copy
-{
-}
+impl<T: Copy, const D: usize> Copy for Rotation<T, D> where InnerOwned<T, Const<D>, Const<D>>: Copy {}
 
-impl<T: Scalar, const D: usize> Clone for Rotation<T, D>
+impl<T: Clone, const D: usize> Clone for Rotation<T, D>
 where
-    <DefaultAllocator as Allocator<T, Const<D>, Const<D>>>::Buffer: Clone,
+    InnerOwned<T, Const<D>, Const<D>>: Clone,
 {
     #[inline]
     fn clone(&self) -> Self {
@@ -86,7 +84,6 @@ where
 #[cfg(feature = "abomonation-serialize")]
 impl<T, const D: usize> Abomonation for Rotation<T, D>
 where
-    T: Scalar,
     SMatrix<T, D, D>: Abomonation,
 {
     unsafe fn entomb<W: Write>(&self, writer: &mut W) -> IOResult<()> {
@@ -105,7 +102,7 @@ where
 #[cfg(feature = "serde-serialize-no-std")]
 impl<T: Scalar, const D: usize> Serialize for Rotation<T, D>
 where
-    Owned<T, Const<D>, Const<D>>: Serialize,
+    InnerOwned<T, Const<D>, Const<D>>: Serialize,
 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -116,9 +113,9 @@ where
 }
 
 #[cfg(feature = "serde-serialize-no-std")]
-impl<'a, T: Scalar, const D: usize> Deserialize<'a> for Rotation<T, D>
+impl<'a, T, const D: usize> Deserialize<'a> for Rotation<T, D>
 where
-    Owned<T, Const<D>, Const<D>>: Deserialize<'a>,
+    InnerOwned<T, Const<D>, Const<D>>: Deserialize<'a>,
 {
     fn deserialize<Des>(deserializer: Des) -> Result<Self, Des::Error>
     where
@@ -130,7 +127,7 @@ where
     }
 }
 
-impl<T: Scalar, const D: usize> Rotation<T, D> {
+impl<T, const D: usize> Rotation<T, D> {
     /// Creates a new rotation from the given square matrix.
     ///
     /// The matrix squareness is checked but not its orthonormality.
@@ -165,7 +162,7 @@ impl<T: Scalar, const D: usize> Rotation<T, D> {
 }
 
 /// # Conversion to a matrix
-impl<T: Scalar, const D: usize> Rotation<T, D> {
+impl<T, const D: usize> Rotation<T, D> {
     /// A reference to the underlying matrix representation of this rotation.
     ///
     /// # Example
@@ -193,7 +190,7 @@ impl<T: Scalar, const D: usize> Rotation<T, D> {
     /// A mutable reference to the underlying matrix representation of this rotation.
     #[inline]
     #[deprecated(note = "Use `.matrix_mut_unchecked()` instead.")]
-    pub unsafe fn matrix_mut(&mut self) -> &mut SMatrix<T, D, D> {
+    pub  fn matrix_mut(&mut self) -> &mut SMatrix<T, D, D> {
         &mut self.matrix
     }
 
@@ -266,7 +263,7 @@ impl<T: Scalar, const D: usize> Rotation<T, D> {
     #[must_use]
     pub fn to_homogeneous(&self) -> OMatrix<T, DimNameSum<Const<D>, U1>, DimNameSum<Const<D>, U1>>
     where
-        T: Zero + One,
+        T: Zero + One + Scalar,
         Const<D>: DimNameAdd<U1>,
         DefaultAllocator: Allocator<T, DimNameSum<Const<D>, U1>, DimNameSum<Const<D>, U1>>,
     {

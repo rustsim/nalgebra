@@ -311,7 +311,7 @@ impl From<SparsityPatternFormatError> for SparseFormatError {
 }
 
 impl fmt::Display for SparsityPatternFormatError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             SparsityPatternFormatError::InvalidOffsetArrayLength => {
                 write!(f, "Length of offset array is not equal to (major_dim + 1).")

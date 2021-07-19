@@ -1,5 +1,5 @@
 #[cfg(feature = "arbitrary")]
-use crate::base::storage::Owned;
+use crate::base::storage::InnerOwned;
 #[cfg(feature = "arbitrary")]
 use quickcheck::{Arbitrary, Gen};
 
@@ -97,7 +97,7 @@ where
     T: SimdRealField + Arbitrary + Send,
     T::Element: SimdRealField,
     R: AbstractRotation<T, D> + Arbitrary + Send,
-    Owned<T, crate::Const<D>>: Send,
+    InnerOwned<T, crate::Const<D>>: Send,
 {
     #[inline]
     fn arbitrary(rng: &mut Gen) -> Self {

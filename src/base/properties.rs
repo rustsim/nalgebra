@@ -7,9 +7,9 @@ use simba::scalar::{ClosedAdd, ClosedMul, ComplexField, RealField};
 use crate::base::allocator::Allocator;
 use crate::base::dimension::{Dim, DimMin};
 use crate::base::storage::Storage;
-use crate::base::{DefaultAllocator, Matrix, Scalar, SquareMatrix};
+use crate::base::{DefaultAllocator, Matrix, SquareMatrix};
 
-impl<T: Scalar, R: Dim, C: Dim, S: Storage<T, R, C>> Matrix<T, R, C, S> {
+impl<T, R: Dim, C: Dim, S: Storage<T, R, C>> Matrix<T, R, C, S> {
     /// The total number of elements of this matrix.
     ///
     /// # Examples:

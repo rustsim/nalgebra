@@ -10,7 +10,7 @@ use abomonation::Abomonation;
 
 use crate::allocator::Allocator;
 use crate::base::DefaultAllocator;
-use crate::storage::Storage;
+use crate::storage::{InnerOwned, Storage};
 use crate::{Dim, Matrix, OMatrix, RealField, Scalar, SimdComplexField, SimdRealField};
 
 /// A wrapper that ensures the underlying algebraic entity has a unit norm.
@@ -113,7 +113,7 @@ mod rkyv_impl {
 
 impl<T, R, C, S> PartialEq for Unit<Matrix<T, R, C, S>>
 where
-    T: Scalar + PartialEq,
+    T: PartialEq,
     R: Dim,
     C: Dim,
     S: Storage<T, R, C>,
@@ -126,7 +126,7 @@ where
 
 impl<T, R, C, S> Eq for Unit<Matrix<T, R, C, S>>
 where
-    T: Scalar + Eq,
+    T: Eq,
     R: Dim,
     C: Dim,
     S: Storage<T, R, C>,
@@ -228,7 +228,7 @@ impl<T> Unit<T> {
     /// Wraps the given reference, assuming it is already normalized.
     #[inline]
     pub fn from_ref_unchecked(value: &T) -> &Self {
-        unsafe { &*(value as *const T as *const Self) }
+        unsafe { &*(value as *const _ as *const _) }
     }
 
     /// Retrieves the underlying value.
@@ -331,7 +331,7 @@ impl<T> Deref for Unit<T> {
 
     #[inline]
     fn deref(&self) -> &T {
-        unsafe { &*(self as *const Self as *const T) }
+        unsafe { &*(self as *const _ as *const T) }
     }
 }
 
@@ -344,6 +344,7 @@ where
     T: From<[<T as simba::simd::SimdValue>::Element; 2]>,
     T::Element: Scalar,
     DefaultAllocator: Allocator<T, R, C> + Allocator<T::Element, R, C>,
+    InnerOwned<T::Element, R, C>: Clone,
 {
     #[inline]
     fn from(arr: [Unit<OMatrix<T::Element, R, C>>; 2]) -> Self {
@@ -360,6 +361,7 @@ where
     T: From<[<T as simba::simd::SimdValue>::Element; 4]>,
     T::Element: Scalar,
     DefaultAllocator: Allocator<T, R, C> + Allocator<T::Element, R, C>,
+    InnerOwned<T::Element, R, C>: Clone,
 {
     #[inline]
     fn from(arr: [Unit<OMatrix<T::Element, R, C>>; 4]) -> Self {
@@ -378,6 +380,7 @@ where
     T: From<[<T as simba::simd::SimdValue>::Element; 8]>,
     T::Element: Scalar,
     DefaultAllocator: Allocator<T, R, C> + Allocator<T::Element, R, C>,
+    InnerOwned<T::Element, R, C>: Clone,
 {
     #[inline]
     fn from(arr: [Unit<OMatrix<T::Element, R, C>>; 8]) -> Self {
@@ -400,6 +403,7 @@ where
     T: From<[<T as simba::simd::SimdValue>::Element; 16]>,
     T::Element: Scalar,
     DefaultAllocator: Allocator<T, R, C> + Allocator<T::Element, R, C>,
+    InnerOwned<T::Element, R, C>: Clone,
 {
     #[inline]
     fn from(arr: [Unit<OMatrix<T::Element, R, C>>; 16]) -> Self {

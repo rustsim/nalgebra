@@ -1,3 +1,5 @@
+use std::fmt;
+
 #[cfg(feature = "serde-serialize-no-std")]
 use serde::{Deserialize, Serialize};
 
@@ -6,8 +8,8 @@ use num::Zero;
 
 use crate::allocator::Allocator;
 use crate::base::{DefaultAllocator, Matrix2, OMatrix, OVector, SquareMatrix, Vector2};
-use crate::dimension::{Dim, DimDiff, DimSub, U1};
-use crate::storage::Storage;
+use crate::dimension::{Dim, DimDiff, DimName, DimSub, U1};
+use crate::storage::{InnerOwned, Storage};
 use simba::scalar::ComplexField;
 
 use crate::linalg::givens::GivensRotation;
@@ -29,7 +31,6 @@ use crate::linalg::SymmetricTridiagonal;
          OVector<T::RealField, D>: Deserialize<'de>,
          OMatrix<T, D, D>: Deserialize<'de>"))
 )]
-#[derive(Clone, Debug)]
 pub struct SymmetricEigen<T: ComplexField, D: Dim>
 where
     DefaultAllocator: Allocator<T, D, D> + Allocator<T::RealField, D>,
@@ -41,12 +42,40 @@ where
     pub eigenvalues: OVector<T::RealField, D>,
 }
 
-impl<T: ComplexField, D: Dim> Copy for SymmetricEigen<T, D>
+impl<T: ComplexField, D: DimName> Copy for SymmetricEigen<T, D>
 where
     DefaultAllocator: Allocator<T, D, D> + Allocator<T::RealField, D>,
-    OMatrix<T, D, D>: Copy,
-    OVector<T::RealField, D>: Copy,
+    InnerOwned<T, D, D>: Copy,
+    InnerOwned<T::RealField, D>: Copy,
 {
+}
+
+impl<T: ComplexField, D: Dim> Clone for SymmetricEigen<T, D>
+where
+    DefaultAllocator: Allocator<T, D, D> + Allocator<T::RealField, D>,
+    InnerOwned<T, D, D>: Clone,
+    InnerOwned<T::RealField, D>: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            eigenvectors: self.eigenvectors.clone(),
+            eigenvalues: self.eigenvalues.clone(),
+        }
+    }
+}
+
+impl<T: ComplexField, D: Dim> fmt::Debug for SymmetricEigen<T, D>
+where
+    DefaultAllocator: Allocator<T, D, D> + Allocator<T::RealField, D>,
+    InnerOwned<T, D, D>: fmt::Debug,
+    InnerOwned<T::RealField, D>: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("SymmetricEigen")
+            .field("eigenvectors", &self.eigenvectors)
+            .field("eigenvalues", &self.eigenvalues)
+            .finish()
+    }
 }
 
 impl<T: ComplexField, D: Dim> SymmetricEigen<T, D>
@@ -270,7 +299,10 @@ where
     ///
     /// This is useful if some of the eigenvalues have been manually modified.
     #[must_use]
-    pub fn recompose(&self) -> OMatrix<T, D, D> {
+    pub fn recompose(&self) -> OMatrix<T, D, D>
+    where
+        InnerOwned<T, D, D>: Clone,
+    {
         let mut u_t = self.eigenvectors.clone();
         for i in 0..self.eigenvalues.len() {
             let val = self.eigenvalues[i];

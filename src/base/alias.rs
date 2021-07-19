@@ -1,10 +1,10 @@
 #[cfg(any(feature = "alloc", feature = "std"))]
 use crate::base::dimension::Dynamic;
 use crate::base::dimension::{U1, U2, U3, U4, U5, U6};
-use crate::base::storage::Owned;
+use crate::base::storage::InnerOwned;
 #[cfg(any(feature = "std", feature = "alloc"))]
 use crate::base::vec_storage::VecStorage;
-use crate::base::{ArrayStorage, Const, Matrix, Unit};
+use crate::base::{ArrayStorage, Const, Matrix, Owned, Unit};
 
 /*
  *
@@ -25,13 +25,13 @@ pub type OMatrix<T, R, C> = Matrix<T, R, C, Owned<T, R, C>>;
 #[deprecated(
     note = "use SMatrix for a statically-sized matrix using integer dimensions, or OMatrix for an owned matrix using types as dimensions."
 )]
-pub type MatrixMN<T, R, C> = Matrix<T, R, C, Owned<T, R, C>>;
+pub type MatrixMN<T, R, C> = OMatrix<T, R, C>;
 
 /// An owned matrix column-major matrix with `D` columns.
 ///
 /// **Because this is an alias, not all its methods are listed here. See the [`Matrix`](crate::base::Matrix) type too.**
 #[deprecated(note = "use OMatrix<T, D, D> or SMatrix<T, D, D> instead.")]
-pub type MatrixN<T, D> = Matrix<T, D, D, Owned<T, D, D>>;
+pub type MatrixN<T, D> = Matrix<T, D, D, InnerOwned<T, D, D>>;
 
 /// A statically sized column-major matrix with `R` rows and `C` columns.
 ///
@@ -274,7 +274,7 @@ pub type Matrix6x5<T> = Matrix<T, U6, U5, ArrayStorage<T, 6, 5>>;
 pub type DVector<T> = Matrix<T, Dynamic, U1, VecStorage<T, Dynamic, U1>>;
 
 /// An owned D-dimensional column vector.
-pub type OVector<T, D> = Matrix<T, D, U1, Owned<T, D, U1>>;
+pub type OVector<T, D> = Matrix<T, D, U1, InnerOwned<T, D, U1>>;
 /// A statically sized D-dimensional column vector.
 pub type SVector<T, const D: usize> = Matrix<T, Const<D>, U1, ArrayStorage<T, D, 1>>; // Owned<T, Const<D>, U1>>;
 
@@ -284,7 +284,7 @@ pub type SVector<T, const D: usize> = Matrix<T, Const<D>, U1, ArrayStorage<T, D,
 #[deprecated(
     note = "use SVector for a statically-sized matrix using integer dimensions, or OVector for an owned matrix using types as dimensions."
 )]
-pub type VectorN<T, D> = Matrix<T, D, U1, Owned<T, D, U1>>;
+pub type VectorN<T, D> = Matrix<T, D, U1, InnerOwned<T, D, U1>>;
 
 /// A stack-allocated, 1-dimensional column vector.
 pub type Vector1<T> = Matrix<T, U1, U1, ArrayStorage<T, 1, 1>>;
@@ -311,7 +311,7 @@ pub type Vector6<T> = Matrix<T, U6, U1, ArrayStorage<T, 6, 1>>;
 pub type RowDVector<T> = Matrix<T, U1, Dynamic, VecStorage<T, U1, Dynamic>>;
 
 /// An owned D-dimensional row vector.
-pub type RowOVector<T, D> = Matrix<T, U1, D, Owned<T, U1, D>>;
+pub type RowOVector<T, D> = Matrix<T, U1, D, InnerOwned<T, U1, D>>;
 
 /// A statically sized D-dimensional row vector.
 pub type RowSVector<T, const D: usize> = Matrix<T, U1, Const<D>, ArrayStorage<T, 1, D>>;

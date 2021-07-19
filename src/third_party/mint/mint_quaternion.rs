@@ -1,6 +1,6 @@
 use crate::{Quaternion, Scalar, SimdValue, UnitQuaternion};
 
-impl<T: Scalar> From<mint::Quaternion<T>> for Quaternion<T> {
+impl<T> From<mint::Quaternion<T>> for Quaternion<T> {
     fn from(q: mint::Quaternion<T>) -> Self {
         Self::new(q.s, q.v.x, q.v.y, q.v.z)
     }

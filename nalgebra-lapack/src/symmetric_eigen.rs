@@ -93,7 +93,8 @@ where
         let n = nrows.value();
 
         let lda = n as i32;
-
+        
+  // IMPORTANT TODO: this is still UB.
         let mut values =
             unsafe { Matrix::new_uninitialized_generic(nrows, Const::<1>).assume_init() };
         let mut info = 0;

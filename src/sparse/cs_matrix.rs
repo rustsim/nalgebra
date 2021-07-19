@@ -263,6 +263,10 @@ where
     /// `nvals` possible non-zero values.
     pub fn new_uninitialized_generic(nrows: R, ncols: C, nvals: usize) -> Self {
         let mut i = Vec::with_capacity(nvals);
+
+        // IMPORTANT TODO: this method is still UB, and we should decide how to
+        // update the API to take it into account.
+
         unsafe {
             i.set_len(nvals);
         }
@@ -470,8 +474,7 @@ where
     {
         // Size = R
         let nrows = self.data.shape().0;
-        let mut workspace =
-            unsafe { crate::unimplemented_or_uninitialized_generic!(nrows, Const::<1>) };
+        let mut workspace = CsMatrix::new_uninitialized_generic(nrows, Const::<1>);
         self.sort_with_workspace(workspace.as_mut_slice());
     }
 

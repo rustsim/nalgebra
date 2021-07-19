@@ -6,7 +6,7 @@ use std::hash::{Hash, Hasher};
 use std::io::{Result as IOResult, Write};
 
 #[cfg(feature = "serde-serialize-no-std")]
-use crate::base::storage::Owned;
+use crate::base::storage::InnerOwned;
 #[cfg(feature = "serde-serialize-no-std")]
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -26,29 +26,29 @@ use crate::geometry::{Point3, Rotation};
 
 /// A quaternion. See the type alias `UnitQuaternion = Unit<Quaternion>` for a quaternion
 /// that may be used as a rotation.
-#[repr(C)]
+#[repr(transparent)]
 #[derive(Debug, Copy, Clone)]
 pub struct Quaternion<T> {
     /// This quaternion as a 4D vector of coordinates in the `[ x, y, z, w ]` storage order.
     pub coords: Vector4<T>,
 }
 
-impl<T: Scalar + Hash> Hash for Quaternion<T> {
+impl<T: Hash> Hash for Quaternion<T> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.coords.hash(state)
     }
 }
 
-impl<T: Scalar + Eq> Eq for Quaternion<T> {}
+impl<T: Eq> Eq for Quaternion<T> {}
 
-impl<T: Scalar> PartialEq for Quaternion<T> {
+impl<T: PartialEq> PartialEq for Quaternion<T> {
     #[inline]
     fn eq(&self, right: &Self) -> bool {
         self.coords == right.coords
     }
 }
 
-impl<T: Scalar + Zero> Default for Quaternion<T> {
+impl<T: Zero + Clone> Default for Quaternion<T> {
     fn default() -> Self {
         Quaternion {
             coords: Vector4::zeros(),
@@ -57,10 +57,10 @@ impl<T: Scalar + Zero> Default for Quaternion<T> {
 }
 
 #[cfg(feature = "bytemuck")]
-unsafe impl<T: Scalar> bytemuck::Zeroable for Quaternion<T> where Vector4<T>: bytemuck::Zeroable {}
+unsafe impl<T> bytemuck::Zeroable for Quaternion<T> where Vector4<T>: bytemuck::Zeroable {}
 
 #[cfg(feature = "bytemuck")]
-unsafe impl<T: Scalar> bytemuck::Pod for Quaternion<T>
+unsafe impl<T> bytemuck::Pod for Quaternion<T>
 where
     Vector4<T>: bytemuck::Pod,
     T: Copy,
@@ -68,7 +68,7 @@ where
 }
 
 #[cfg(feature = "abomonation-serialize")]
-impl<T: Scalar> Abomonation for Quaternion<T>
+impl<T> Abomonation for Quaternion<T>
 where
     Vector4<T>: Abomonation,
 {
@@ -86,7 +86,7 @@ where
 }
 
 #[cfg(feature = "serde-serialize-no-std")]
-impl<T: Scalar> Serialize for Quaternion<T>
+impl<T> Serialize for Quaternion<T>
 where
     Owned<T, U4>: Serialize,
 {
@@ -99,7 +99,7 @@ where
 }
 
 #[cfg(feature = "serde-serialize-no-std")]
-impl<'a, T: Scalar> Deserialize<'a> for Quaternion<T>
+impl<'a, T> Deserialize<'a> for Quaternion<T>
 where
     Owned<T, U4>: Deserialize<'a>,
 {
@@ -1045,7 +1045,7 @@ impl<T: RealField + UlpsEq<Epsilon = T>> UlpsEq for Quaternion<T> {
     }
 }
 
-impl<T: RealField + fmt::Display> fmt::Display for Quaternion<T> {
+impl<T: fmt::Display> fmt::Display for Quaternion<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -1097,7 +1097,7 @@ impl<T: SimdRealField> UnitQuaternion<T>
 where
     T::Element: SimdRealField,
 {
-    /// The rotation angle in [0; pi] of this unit quaternion.
+    /// The rotation angle in \[0; pi\] of this unit quaternion.
     ///
     /// # Example
     /// ```

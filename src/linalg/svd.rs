@@ -1,3 +1,5 @@
+use std::fmt;
+
 #[cfg(feature = "serde-serialize-no-std")]
 use serde::{Deserialize, Serialize};
 
@@ -7,8 +9,8 @@ use num::{One, Zero};
 use crate::allocator::Allocator;
 use crate::base::{DefaultAllocator, Matrix, Matrix2x3, OMatrix, OVector, Vector2};
 use crate::constraint::{SameNumberOfRows, ShapeConstraint};
-use crate::dimension::{Dim, DimDiff, DimMin, DimMinimum, DimSub, U1};
-use crate::storage::Storage;
+use crate::dimension::{Dim, DimDiff, DimMin, DimMinimum, DimName, DimSub, U1};
+use crate::storage::{InnerOwned, Storage};
 use simba::scalar::{ComplexField, RealField};
 
 use crate::linalg::givens::GivensRotation;
@@ -39,7 +41,6 @@ use crate::linalg::Bidiagonal;
          OVector<T::RealField, DimMinimum<R, C>>: Deserialize<'de>"
     ))
 )]
-#[derive(Clone, Debug)]
 pub struct SVD<T: ComplexField, R: DimMin<C>, C: Dim>
 where
     DefaultAllocator: Allocator<T, DimMinimum<R, C>, C>
@@ -54,15 +55,51 @@ where
     pub singular_values: OVector<T::RealField, DimMinimum<R, C>>,
 }
 
-impl<T: ComplexField, R: DimMin<C>, C: Dim> Copy for SVD<T, R, C>
+impl<T: ComplexField + Copy, R: DimName + DimMin<C>, C: DimName> Copy for SVD<T, R, C>
 where
     DefaultAllocator: Allocator<T, DimMinimum<R, C>, C>
         + Allocator<T, R, DimMinimum<R, C>>
         + Allocator<T::RealField, DimMinimum<R, C>>,
-    OMatrix<T, R, DimMinimum<R, C>>: Copy,
-    OMatrix<T, DimMinimum<R, C>, C>: Copy,
-    OVector<T::RealField, DimMinimum<R, C>>: Copy,
+    InnerOwned<T, R, DimMinimum<R, C>>: Copy,
+    InnerOwned<T, DimMinimum<R, C>, C>: Copy,
+    InnerOwned<T::RealField, DimMinimum<R, C>>: Copy,
 {
+}
+
+impl<T: ComplexField, R: DimMin<C>, C: Dim> Clone for SVD<T, R, C>
+where
+    DefaultAllocator: Allocator<T, DimMinimum<R, C>, C>
+        + Allocator<T, R, DimMinimum<R, C>>
+        + Allocator<T::RealField, DimMinimum<R, C>>,
+    InnerOwned<T, R, DimMinimum<R, C>>: Clone,
+    InnerOwned<T, DimMinimum<R, C>, C>: Clone,
+    InnerOwned<T::RealField, DimMinimum<R, C>>: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            u: self.u.clone(),
+            v_t: self.v_t.clone(),
+            singular_values: self.singular_values.clone(),
+        }
+    }
+}
+
+impl<T: ComplexField, R: DimMin<C>, C: Dim> fmt::Debug for SVD<T, R, C>
+where
+    DefaultAllocator: Allocator<T, DimMinimum<R, C>, C>
+        + Allocator<T, R, DimMinimum<R, C>>
+        + Allocator<T::RealField, DimMinimum<R, C>>,
+    InnerOwned<T, R, DimMinimum<R, C>>: fmt::Debug,
+    InnerOwned<T, DimMinimum<R, C>, C>: fmt::Debug,
+    InnerOwned<T::RealField, DimMinimum<R, C>>: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("SVD")
+            .field("u", &self.u)
+            .field("v_t", &self.v_t)
+            .field("singular_values", &self.singular_values)
+            .finish()
+    }
 }
 
 impl<T: ComplexField, R: DimMin<C>, C: Dim> SVD<T, R, C>

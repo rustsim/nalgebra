@@ -1,5 +1,5 @@
 use crate::{
-    DualQuaternion, Isometry3, Quaternion, Scalar, SimdRealField, Translation3, UnitDualQuaternion,
+    DualQuaternion, Isometry3, Quaternion, SimdRealField, Translation3, UnitDualQuaternion,
     UnitQuaternion,
 };
 use num::{One, Zero};
@@ -7,7 +7,7 @@ use num::{One, Zero};
 use quickcheck::{Arbitrary, Gen};
 use simba::scalar::SupersetOf;
 
-impl<T: Scalar> DualQuaternion<T> {
+impl<T> DualQuaternion<T> {
     /// Creates a dual quaternion from its rotation and translation components.
     ///
     /// # Example
@@ -60,7 +60,7 @@ impl<T: Scalar> DualQuaternion<T> {
     /// let q2 = q.cast::<f32>();
     /// assert_eq!(q2, DualQuaternion::from_real(Quaternion::new(1.0f32, 2.0, 3.0, 4.0)));
     /// ```
-    pub fn cast<To: Scalar>(self) -> DualQuaternion<To>
+    pub fn cast<To>(self) -> DualQuaternion<To>
     where
         DualQuaternion<To>: SupersetOf<Self>,
     {
@@ -156,7 +156,7 @@ impl<T: SimdRealField> UnitDualQuaternion<T> {
     /// let q2 = q.cast::<f32>();
     /// assert_eq!(q2, UnitDualQuaternion::<f32>::identity());
     /// ```
-    pub fn cast<To: Scalar>(self) -> UnitDualQuaternion<To>
+    pub fn cast<To>(self) -> UnitDualQuaternion<To>
     where
         UnitDualQuaternion<To>: SupersetOf<Self>,
     {

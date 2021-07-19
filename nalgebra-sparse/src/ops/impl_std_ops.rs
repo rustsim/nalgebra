@@ -6,7 +6,7 @@ use crate::ops::serial::{
     spmm_csc_prealloc, spmm_csr_dense, spmm_csr_pattern, spmm_csr_prealloc,
 };
 use crate::ops::Op;
-use nalgebra::allocator::Allocator;
+use nalgebra::allocator::{Allocator, InnerAllocator};
 use nalgebra::base::storage::Storage;
 use nalgebra::constraint::{DimEq, ShapeConstraint};
 use nalgebra::{
@@ -28,7 +28,7 @@ macro_rules! impl_bin_op {
             // Note: The Neg bound is currently required because we delegate e.g.
             // Sub to SpAdd with negative coefficients. This is not well-defined for
             // unsigned data types.
-            $($scalar_type: $($bounds + )? Scalar + ClosedAdd + ClosedSub + ClosedMul + Zero + One + Neg<Output=T>)?
+            $($scalar_type: $($bounds + )? Scalar + ClosedAdd + ClosedSub + ClosedMul + Zero + One + Neg<Output=T> + PartialEq)?
         {
             type Output = $ret;
             fn $method(self, $b: $b_type) -> Self::Output {
@@ -306,9 +306,9 @@ macro_rules! impl_spmm_cs_dense {
             // TODO: Is it possible to simplify these bounds?
             ShapeConstraint:
                 // Bounds so that we can turn OMatrix<T, Dynamic, C> into a DMatrixSliceMut
-                  DimEq<U1, <<DefaultAllocator as Allocator<T, Dynamic, C>>::Buffer as Storage<T, Dynamic, C>>::RStride>
+                  DimEq<U1, <<DefaultAllocator as InnerAllocator<T, Dynamic, C>>::Buffer as Storage<T, Dynamic, C>>::RStride>
                 + DimEq<C, Dynamic>
-                + DimEq<Dynamic, <<DefaultAllocator as Allocator<T, Dynamic, C>>::Buffer as Storage<T, Dynamic, C>>::CStride>
+                + DimEq<Dynamic, <<DefaultAllocator as InnerAllocator<T, Dynamic, C>>::Buffer as Storage<T, Dynamic, C>>::CStride>
                 // Bounds so that we can turn &Matrix<T, R, C, S> into a DMatrixSlice
                 + DimEq<U1, S::RStride>
                 + DimEq<R, Dynamic>

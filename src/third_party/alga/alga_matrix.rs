@@ -433,8 +433,8 @@ where
             "Matrix meet/join error: mismatched dimensions."
         );
 
-        let mut mres = unsafe { crate::unimplemented_or_uninitialized_generic!(shape.0, shape.1) };
-        let mut jres = unsafe { crate::unimplemented_or_uninitialized_generic!(shape.0, shape.1) };
+        let mut mres = Matrix::new_uninitialized_generic(shape.0, shape.1);
+        let mut jres = Matrix::new_uninitialized_generic(shape.0, shape.1);
 
         for i in 0..shape.0.value() * shape.1.value() {
             unsafe {

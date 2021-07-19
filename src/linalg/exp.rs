@@ -7,7 +7,9 @@ use crate::{
         storage::Storage,
         DefaultAllocator,
     },
-    convert, try_convert, ComplexField, OMatrix, RealField,
+    convert,
+    storage::InnerOwned,
+    try_convert, ComplexField, OMatrix, RealField,
 };
 
 use crate::num::Zero;
@@ -433,6 +435,7 @@ where
         + Allocator<T, D>
         + Allocator<T::RealField, D>
         + Allocator<T::RealField, D, D>,
+    InnerOwned<T, D, D>: Clone,
 {
     /// Computes exponential of this matrix
     #[must_use]

@@ -15,7 +15,7 @@ use simba::simd::SimdRealField;
 
 use crate::base::allocator::Allocator;
 use crate::base::dimension::{DimNameAdd, DimNameSum, U1};
-use crate::base::storage::Owned;
+use crate::base::storage::InnerOwned;
 use crate::base::{Const, DefaultAllocator, OMatrix, SVector, Scalar, Unit};
 use crate::geometry::{AbstractRotation, Point, Translation};
 
@@ -53,7 +53,6 @@ use crate::geometry::{AbstractRotation, Point, Translation};
 /// # Conversion to a matrix
 /// * [Conversion to a matrix <span style="float:right;">`to_matrix`…</span>](#conversion-to-a-matrix)
 ///
-#[repr(C)]
 #[derive(Debug)]
 #[cfg_attr(feature = "serde-serialize-no-std", derive(Serialize, Deserialize))]
 #[cfg_attr(
@@ -80,7 +79,6 @@ pub struct Isometry<T, R, const D: usize> {
 #[cfg(feature = "abomonation-serialize")]
 impl<T, R, const D: usize> Abomonation for Isometry<T, R, D>
 where
-    T: SimdRealField,
     R: Abomonation,
     Translation<T, D>: Abomonation,
 {
@@ -106,10 +104,7 @@ mod rkyv_impl {
     use crate::{base::Scalar, geometry::Translation};
     use rkyv::{offset_of, project_struct, Archive, Deserialize, Fallible, Serialize};
 
-    impl<T: Scalar + Archive, R: Archive, const D: usize> Archive for Isometry<T, R, D>
-    where
-        T::Archived: Scalar,
-    {
+    impl<T: Archive, R: Archive, const D: usize> Archive for Isometry<T, R, D> {
         type Archived = Isometry<T::Archived, R::Archived, D>;
         type Resolver = (R::Resolver, <Translation<T, D> as Archive>::Resolver);
 
@@ -132,8 +127,8 @@ mod rkyv_impl {
         }
     }
 
-    impl<T: Scalar + Serialize<S>, R: Serialize<S>, S: Fallible + ?Sized, const D: usize>
-        Serialize<S> for Isometry<T, R, D>
+    impl<T: Serialize<S>, R: Serialize<S>, S: Fallible + ?Sized, const D: usize> Serialize<S>
+        for Isometry<T, R, D>
     where
         T::Archived: Scalar,
     {
@@ -145,7 +140,7 @@ mod rkyv_impl {
         }
     }
 
-    impl<T: Scalar + Archive, R: Archive, _D: Fallible + ?Sized, const D: usize>
+    impl<T: Archive, R: Archive, _D: Fallible + ?Sized, const D: usize>
         Deserialize<Isometry<T, R, D>, _D> for Isometry<T::Archived, R::Archived, D>
     where
         T::Archived: Scalar + Deserialize<T, _D>,
@@ -160,9 +155,9 @@ mod rkyv_impl {
     }
 }
 
-impl<T: Scalar + hash::Hash, R: hash::Hash, const D: usize> hash::Hash for Isometry<T, R, D>
+impl<T: hash::Hash, R: hash::Hash, const D: usize> hash::Hash for Isometry<T, R, D>
 where
-    Owned<T, Const<D>>: hash::Hash,
+    InnerOwned<T, Const<D>>: hash::Hash,
 {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         self.translation.hash(state);
@@ -170,12 +165,9 @@ where
     }
 }
 
-impl<T: Scalar + Copy, R: Copy, const D: usize> Copy for Isometry<T, R, D> where
-    Owned<T, Const<D>>: Copy
-{
-}
+impl<T: Copy, R: Copy, const D: usize> Copy for Isometry<T, R, D> where InnerOwned<T, Const<D>>: Copy {}
 
-impl<T: Scalar, R: Clone, const D: usize> Clone for Isometry<T, R, D> {
+impl<T: Clone, R: Clone, const D: usize> Clone for Isometry<T, R, D> {
     #[inline]
     fn clone(&self) -> Self {
         Self {
@@ -638,7 +630,7 @@ where
  * Display
  *
  */
-impl<T: RealField + fmt::Display, R, const D: usize> fmt::Display for Isometry<T, R, D>
+impl<T: Scalar + fmt::Display, R, const D: usize> fmt::Display for Isometry<T, R, D>
 where
     R: fmt::Display,
 {

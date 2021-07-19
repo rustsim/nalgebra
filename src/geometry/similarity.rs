@@ -17,12 +17,11 @@ use simba::simd::SimdRealField;
 
 use crate::base::allocator::Allocator;
 use crate::base::dimension::{DimNameAdd, DimNameSum, U1};
-use crate::base::storage::Owned;
+use crate::base::storage::InnerOwned;
 use crate::base::{Const, DefaultAllocator, OMatrix, SVector, Scalar};
 use crate::geometry::{AbstractRotation, Isometry, Point, Translation};
 
 /// A similarity, i.e., an uniform scaling, followed by a rotation, followed by a translation.
-#[repr(C)]
 #[derive(Debug)]
 #[cfg_attr(feature = "serde-serialize-no-std", derive(Serialize, Deserialize))]
 #[cfg_attr(
@@ -65,7 +64,7 @@ where
 
 impl<T: Scalar + hash::Hash, R: hash::Hash, const D: usize> hash::Hash for Similarity<T, R, D>
 where
-    Owned<T, Const<D>>: hash::Hash,
+    InnerOwned<T, Const<D>>: hash::Hash,
 {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         self.isometry.hash(state);
@@ -76,7 +75,7 @@ where
 impl<T: Scalar + Copy + Zero, R: AbstractRotation<T, D> + Copy, const D: usize> Copy
     for Similarity<T, R, D>
 where
-    Owned<T, Const<D>>: Copy,
+    InnerOwned<T, Const<D>>: Copy,
 {
 }
 

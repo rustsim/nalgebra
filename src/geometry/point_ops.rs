@@ -21,7 +21,7 @@ use crate::DefaultAllocator;
  * Indexing.
  *
  */
-impl<T: Scalar, D: DimName> Index<usize> for OPoint<T, D>
+impl<T, D: DimName> Index<usize> for OPoint<T, D>
 where
     DefaultAllocator: Allocator<T, D>,
 {
@@ -33,7 +33,7 @@ where
     }
 }
 
-impl<T: Scalar, D: DimName> IndexMut<usize> for OPoint<T, D>
+impl<T, D: DimName> IndexMut<usize> for OPoint<T, D>
 where
     DefaultAllocator: Allocator<T, D>,
 {

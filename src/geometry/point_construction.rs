@@ -1,3 +1,5 @@
+use std::mem::{ManuallyDrop, MaybeUninit};
+
 #[cfg(feature = "arbitrary")]
 use quickcheck::{Arbitrary, Gen};
 
@@ -20,17 +22,21 @@ use simba::scalar::{ClosedDiv, SupersetOf};
 use crate::geometry::Point;
 
 /// # Other construction methods
-impl<T: Scalar, D: DimName> OPoint<T, D>
+impl<T, D: DimName> OPoint<T, D>
 where
     DefaultAllocator: Allocator<T, D>,
 {
     /// Creates a new point with uninitialized coordinates.
     #[inline]
-    pub unsafe fn new_uninitialized() -> Self {
-        Self::from(crate::unimplemented_or_uninitialized_generic!(
-            D::name(),
-            Const::<1>
-        ))
+    pub fn new_uninitialized() -> OPoint<MaybeUninit<T>, D> {
+        OPoint::from(OVector::new_uninitialized_generic(D::name(), Const::<1>))
+    }
+
+    /// Converts `self` into a point whose coordinates must be manually dropped.
+    /// This should be zero-cost.
+    #[inline]
+    pub fn manually_drop(self) -> OPoint<ManuallyDrop<T>, D> {
+        OPoint::from(self.coords.manually_drop())
     }
 
     /// Creates a new point with all coordinates equal to zero.
@@ -51,9 +57,9 @@ where
     #[inline]
     pub fn origin() -> Self
     where
-        T: Zero,
+        T: Zero + Clone,
     {
-        Self::from(OVector::from_element(T::zero()))
+        Self::from(OVector::<_, D>::zeros())
     }
 
     /// Creates a new point from a slice.
@@ -71,8 +77,11 @@ where
     /// assert_eq!(pt, Point3::new(1.0, 2.0, 3.0));
     /// ```
     #[inline]
-    pub fn from_slice(components: &[T]) -> Self {
-        Self::from(OVector::from_row_slice(components))
+    pub fn from_slice(components: &[T]) -> Self
+    where
+        T: Clone,
+    {
+        Self::from(OVector::<_, D>::from_row_slice(components))
     }
 
     /// Creates a new point from its homogeneous vector representation.
@@ -130,7 +139,7 @@ where
     /// let pt2 = pt.cast::<f32>();
     /// assert_eq!(pt2, Point2::new(1.0f32, 2.0));
     /// ```
-    pub fn cast<To: Scalar>(self) -> OPoint<To, D>
+    pub fn cast<To>(self) -> OPoint<To, D>
     where
         OPoint<To, D>: SupersetOf<Self>,
         DefaultAllocator: Allocator<To, D>,
@@ -160,7 +169,7 @@ where
 }
 
 #[cfg(feature = "rand-no-std")]
-impl<T: Scalar, D: DimName> Distribution<OPoint<T, D>> for Standard
+impl<T, D: DimName> Distribution<OPoint<T, D>> for Standard
 where
     Standard: Distribution<T>,
     DefaultAllocator: Allocator<T, D>,
@@ -173,10 +182,10 @@ where
 }
 
 #[cfg(feature = "arbitrary")]
-impl<T: Scalar + Arbitrary + Send, D: DimName> Arbitrary for OPoint<T, D>
+impl<T: Arbitrary + Send, D: DimName> Arbitrary for OPoint<T, D>
 where
-    <DefaultAllocator as Allocator<T, D>>::Buffer: Send,
     DefaultAllocator: Allocator<T, D>,
+    crate::base::storage::InnerOwned<T, D>: Clone + Send,
 {
     #[inline]
     fn arbitrary(g: &mut Gen) -> Self {
@@ -192,7 +201,7 @@ where
 // NOTE: the impl for Point1 is not with the others so that we
 // can add a section with the impl block comment.
 /// # Construction from individual components
-impl<T: Scalar> Point1<T> {
+impl<T> Point1<T> {
     /// Initializes this point from its components.
     ///
     /// # Example
@@ -211,7 +220,7 @@ impl<T: Scalar> Point1<T> {
 }
 macro_rules! componentwise_constructors_impl(
     ($($doc: expr; $Point: ident, $Vector: ident, $($args: ident:$irow: expr),*);* $(;)*) => {$(
-        impl<T: Scalar> $Point<T> {
+        impl<T> $Point<T> {
             #[doc = "Initializes this point from its components."]
             #[doc = "# Example\n```"]
             #[doc = $doc]

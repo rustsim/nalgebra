@@ -153,15 +153,15 @@ where
     where
         DefaultAllocator: Allocator<Complex<T>, D>,
     {
-        let mut out = unsafe {
-            OVector::new_uninitialized_generic(self.t.data.shape().0, Const::<1>).assume_init()
-        };
+        let mut out =
+            unsafe { OVector::new_uninitialized_generic(self.t.data.shape().0, Const::<1>) };
 
         for i in 0..out.len() {
-            out[i] = Complex::new(self.re[i], self.im[i])
+            out[i] = MaybeUninit::new(Complex::new(self.re[i], self.im[i]));
         }
 
-        out
+        // Safety: all entries have been initialized.
+        unsafe { out.assume_init() }
     }
 }
 

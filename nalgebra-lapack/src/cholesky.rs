@@ -24,17 +24,17 @@ use lapack;
          OMatrix<T, D, D>: Deserialize<'de>"))
 )]
 #[derive(Clone, Debug)]
-pub struct Cholesky<T: Scalar, D: Dim>
+pub struct Cholesky<T, D: Dim>
 where
     DefaultAllocator: Allocator<T, D, D>,
 {
     l: OMatrix<T, D, D>,
 }
 
-impl<T: Scalar + Copy, D: Dim> Copy for Cholesky<T, D>
+impl<T: Copy, D: Dim> Copy for Cholesky<T, D>
 where
     DefaultAllocator: Allocator<T, D, D>,
-    OMatrix<T, D, D>: Copy,
+    Owned<T, D, D>: Copy,
 {
 }
 

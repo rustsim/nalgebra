@@ -1,7 +1,7 @@
 use std::ops::{Deref, DerefMut};
 
 use crate::base::coordinates::{X, XY, XYZ, XYZW, XYZWA, XYZWAB};
-use crate::base::{Scalar, U1, U2, U3, U4, U5, U6};
+use crate::base::{U1, U2, U3, U4, U5, U6};
 
 use crate::geometry::OPoint;
 
@@ -13,7 +13,7 @@ use crate::geometry::OPoint;
 
 macro_rules! deref_impl(
     ($D: ty, $Target: ident $(, $comps: ident)*) => {
-        impl<T: Scalar> Deref for OPoint<T, $D>
+        impl<T> Deref for OPoint<T, $D>
         {
             type Target = $Target<T>;
 
@@ -23,7 +23,7 @@ macro_rules! deref_impl(
             }
         }
 
-        impl<T: Scalar> DerefMut for OPoint<T, $D>
+        impl<T> DerefMut for OPoint<T, $D>
         {
             #[inline]
             fn deref_mut(&mut self) -> &mut Self::Target {

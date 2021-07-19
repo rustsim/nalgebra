@@ -12,13 +12,14 @@ impl<T: Scalar + SimdValue> Deref for Quaternion<T> {
 
     #[inline]
     fn deref(&self) -> &Self::Target {
-        unsafe { &*(self as *const Self as *const Self::Target) }
+        // Safety: Self and IJKW are both stored as contiguous coordinates.
+        unsafe { &*(self as *const _ as *const _) }
     }
 }
 
 impl<T: Scalar + SimdValue> DerefMut for Quaternion<T> {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
-        unsafe { &mut *(self as *mut Self as *mut Self::Target) }
+        unsafe { &mut *(self as *mut _ as *mut _) }
     }
 }

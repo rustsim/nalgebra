@@ -1,4 +1,7 @@
-use na::{DMatrix, DVector, Matrix2, Matrix3, Matrix4, OMatrix, Vector2, Vector3, Vector4, U10};
+use na::{
+    Const, DMatrix, DVector, Dynamic, Matrix2, Matrix3, Matrix4, OMatrix, Vector2, Vector3,
+    Vector4, U10,
+};
 use rand::Rng;
 use rand_isaac::IsaacRng;
 use std::ops::{Add, Div, Mul, Sub};
@@ -186,7 +189,7 @@ fn axpy(bench: &mut criterion::Criterion) {
 fn tr_mul_to(bench: &mut criterion::Criterion) {
     let a = DMatrix::<f64>::new_random(1000, 1000);
     let b = DVector::<f64>::new_random(1000);
-    let mut c = DVector::from_element(1000, 0.0);
+    let mut c = DVector::new_uninitialized_generic(Dynamic::new(1000), Const::<1>);
 
     bench.bench_function("tr_mul_to", move |bh| bh.iter(|| a.tr_mul_to(&b, &mut c)));
 }
@@ -194,7 +197,7 @@ fn tr_mul_to(bench: &mut criterion::Criterion) {
 fn mat_mul_mat(bench: &mut criterion::Criterion) {
     let a = DMatrix::<f64>::new_random(100, 100);
     let b = DMatrix::<f64>::new_random(100, 100);
-    let mut ab = DMatrix::<f64>::from_element(100, 100, 0.0);
+    let mut ab = DMatrix::new_uninitialized_generic(Dynamic::new(100), Dynamic::new(100));
 
     bench.bench_function("mat_mul_mat", move |bh| {
         bh.iter(|| {

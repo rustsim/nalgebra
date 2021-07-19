@@ -15,13 +15,13 @@ use simba::scalar::{ClosedAdd, ClosedNeg, ClosedSub};
 
 use crate::base::allocator::Allocator;
 use crate::base::dimension::{DimNameAdd, DimNameSum, U1};
-use crate::base::storage::Owned;
+use crate::base::storage::InnerOwned;
 use crate::base::{Const, DefaultAllocator, OMatrix, SVector, Scalar};
 
 use crate::geometry::Point;
 
 /// A translation.
-#[repr(C)]
+#[repr(transparent)]
 #[derive(Debug)]
 pub struct Translation<T, const D: usize> {
     /// The translation coordinates, i.e., how much is added to a point's coordinates when it is
@@ -29,20 +29,20 @@ pub struct Translation<T, const D: usize> {
     pub vector: SVector<T, D>,
 }
 
-impl<T: Scalar + hash::Hash, const D: usize> hash::Hash for Translation<T, D>
+impl<T: hash::Hash, const D: usize> hash::Hash for Translation<T, D>
 where
-    Owned<T, Const<D>>: hash::Hash,
+    InnerOwned<T, Const<D>>: hash::Hash,
 {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         self.vector.hash(state)
     }
 }
 
-impl<T: Scalar + Copy, const D: usize> Copy for Translation<T, D> {}
+impl<T: Copy, const D: usize> Copy for Translation<T, D> {}
 
-impl<T: Scalar, const D: usize> Clone for Translation<T, D>
+impl<T: Clone, const D: usize> Clone for Translation<T, D>
 where
-    Owned<T, Const<D>>: Clone,
+    InnerOwned<T, Const<D>>: Clone,
 {
     #[inline]
     fn clone(&self) -> Self {
@@ -53,7 +53,6 @@ where
 #[cfg(feature = "abomonation-serialize")]
 impl<T, const D: usize> Abomonation for Translation<T, D>
 where
-    T: Scalar,
     SVector<T, D>: Abomonation,
 {
     unsafe fn entomb<W: Write>(&self, writer: &mut W) -> IOResult<()> {
@@ -70,9 +69,9 @@ where
 }
 
 #[cfg(feature = "serde-serialize-no-std")]
-impl<T: Scalar, const D: usize> Serialize for Translation<T, D>
+impl<T, const D: usize> Serialize for Translation<T, D>
 where
-    Owned<T, Const<D>>: Serialize,
+    InnerOwned<T, Const<D>>: Serialize,
 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -83,9 +82,9 @@ where
 }
 
 #[cfg(feature = "serde-serialize-no-std")]
-impl<'a, T: Scalar, const D: usize> Deserialize<'a> for Translation<T, D>
+impl<'a, T, const D: usize> Deserialize<'a> for Translation<T, D>
 where
-    Owned<T, Const<D>>: Deserialize<'a>,
+    InnerOwned<T, Const<D>>: Deserialize<'a>,
 {
     fn deserialize<Des>(deserializer: Des) -> Result<Self, Des::Error>
     where
@@ -140,7 +139,7 @@ mod rkyv_impl {
     }
 }
 
-impl<T: Scalar, const D: usize> Translation<T, D> {
+impl<T, const D: usize> Translation<T, D> {
     /// Creates a new translation from the given vector.
     #[inline]
     #[deprecated(note = "Use `::from` instead.")]
@@ -166,7 +165,7 @@ impl<T: Scalar, const D: usize> Translation<T, D> {
     #[must_use = "Did you mean to use inverse_mut()?"]
     pub fn inverse(&self) -> Translation<T, D>
     where
-        T: ClosedNeg,
+        T: ClosedNeg + Scalar,
     {
         Translation::from(-&self.vector)
     }
@@ -193,7 +192,7 @@ impl<T: Scalar, const D: usize> Translation<T, D> {
     #[must_use]
     pub fn to_homogeneous(&self) -> OMatrix<T, DimNameSum<Const<D>, U1>, DimNameSum<Const<D>, U1>>
     where
-        T: Zero + One,
+        T: Zero + One + Scalar,
         Const<D>: DimNameAdd<U1>,
         DefaultAllocator: Allocator<T, DimNameSum<Const<D>, U1>, DimNameSum<Const<D>, U1>>,
     {
@@ -224,7 +223,7 @@ impl<T: Scalar, const D: usize> Translation<T, D> {
     #[inline]
     pub fn inverse_mut(&mut self)
     where
-        T: ClosedNeg,
+        T: ClosedNeg + Scalar,
     {
         self.vector.neg_mut()
     }
@@ -264,16 +263,16 @@ impl<T: Scalar + ClosedSub, const D: usize> Translation<T, D> {
     }
 }
 
-impl<T: Scalar + Eq, const D: usize> Eq for Translation<T, D> {}
+impl<T: Eq, const D: usize> Eq for Translation<T, D> {}
 
-impl<T: Scalar + PartialEq, const D: usize> PartialEq for Translation<T, D> {
+impl<T: PartialEq, const D: usize> PartialEq for Translation<T, D> {
     #[inline]
     fn eq(&self, right: &Translation<T, D>) -> bool {
         self.vector == right.vector
     }
 }
 
-impl<T: Scalar + AbsDiffEq, const D: usize> AbsDiffEq for Translation<T, D>
+impl<T: AbsDiffEq, const D: usize> AbsDiffEq for Translation<T, D>
 where
     T::Epsilon: Copy,
 {
@@ -290,7 +289,7 @@ where
     }
 }
 
-impl<T: Scalar + RelativeEq, const D: usize> RelativeEq for Translation<T, D>
+impl<T: RelativeEq, const D: usize> RelativeEq for Translation<T, D>
 where
     T::Epsilon: Copy,
 {
@@ -311,7 +310,7 @@ where
     }
 }
 
-impl<T: Scalar + UlpsEq, const D: usize> UlpsEq for Translation<T, D>
+impl<T: UlpsEq, const D: usize> UlpsEq for Translation<T, D>
 where
     T::Epsilon: Copy,
 {

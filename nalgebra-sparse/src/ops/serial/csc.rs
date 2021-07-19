@@ -55,7 +55,7 @@ pub fn spadd_csc_prealloc<T>(
     a: Op<&CscMatrix<T>>,
 ) -> Result<(), OperationError>
 where
-    T: Scalar + ClosedAdd + ClosedMul + Zero + One,
+    T: Scalar + ClosedAdd + ClosedMul + Zero + One+PartialEq,
 {
     assert_compatible_spadd_dims!(c, a);
     spadd_cs_prealloc(beta, &mut c.cs, alpha, a.map_same_op(|a| &a.cs))

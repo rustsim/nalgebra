@@ -1,10 +1,12 @@
+use std::fmt;
+
 #[cfg(feature = "serde-serialize-no-std")]
 use serde::{Deserialize, Serialize};
 
 use crate::allocator::Allocator;
 use crate::base::{Const, DefaultAllocator, OMatrix, OVector};
-use crate::dimension::Dim;
-use crate::storage::Storage;
+use crate::dimension::{Dim, DimName};
+use crate::storage::{InnerOwned, Storage};
 use simba::scalar::RealField;
 
 /// UDU factorization.
@@ -19,8 +21,7 @@ use simba::scalar::RealField;
         deserialize = "OVector<T, D>: Deserialize<'de>, OMatrix<T, D, D>: Deserialize<'de>"
     ))
 )]
-#[derive(Clone, Debug)]
-pub struct UDU<T: RealField, D: Dim>
+pub struct UDU<T, D: Dim>
 where
     DefaultAllocator: Allocator<T, D> + Allocator<T, D, D>,
 {
@@ -30,12 +31,40 @@ where
     pub d: OVector<T, D>,
 }
 
-impl<T: RealField, D: Dim> Copy for UDU<T, D>
+impl<T: Copy, D: DimName> Copy for UDU<T, D>
 where
     DefaultAllocator: Allocator<T, D> + Allocator<T, D, D>,
-    OVector<T, D>: Copy,
-    OMatrix<T, D, D>: Copy,
+    InnerOwned<T, D>: Copy,
+    InnerOwned<T, D, D>: Copy,
 {
+}
+
+impl<T: Clone, D: Dim> Clone for UDU<T, D>
+where
+    DefaultAllocator: Allocator<T, D> + Allocator<T, D, D>,
+    InnerOwned<T, D>: Clone,
+    InnerOwned<T, D, D>: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            u: self.u.clone(),
+            d: self.d.clone(),
+        }
+    }
+}
+
+impl<T: fmt::Debug, D: Dim> fmt::Debug for UDU<T, D>
+where
+    DefaultAllocator: Allocator<T, D> + Allocator<T, D, D>,
+    InnerOwned<T, D>: fmt::Debug,
+    InnerOwned<T, D, D>: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("UDU")
+            .field("u", &self.u)
+            .field("d", &self.d)
+            .finish()
+    }
 }
 
 impl<T: RealField, D: Dim> UDU<T, D>

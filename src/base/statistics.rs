@@ -1,3 +1,5 @@
+use std::mem::MaybeUninit;
+
 use crate::allocator::Allocator;
 use crate::storage::Storage;
 use crate::{Const, DefaultAllocator, Dim, Matrix, OVector, RowOVector, Scalar, VectorSlice, U1};
@@ -5,7 +7,7 @@ use num::Zero;
 use simba::scalar::{ClosedAdd, Field, SupersetOf};
 
 /// # Folding on columns and rows
-impl<T: Scalar, R: Dim, C: Dim, S: Storage<T, R, C>> Matrix<T, R, C, S> {
+impl<T, R: Dim, C: Dim, S: Storage<T, R, C>> Matrix<T, R, C, S> {
     /// Returns a row vector where each element is the result of the application of `f` on the
     /// corresponding column of the original matrix.
     #[inline]
@@ -18,17 +20,16 @@ impl<T: Scalar, R: Dim, C: Dim, S: Storage<T, R, C>> Matrix<T, R, C, S> {
         DefaultAllocator: Allocator<T, U1, C>,
     {
         let ncols = self.data.shape().1;
-        let mut res: RowOVector<T, C> =
-            unsafe { crate::unimplemented_or_uninitialized_generic!(Const::<1>, ncols) };
+        let mut res = RowOVector::new_uninitialized_generic(Const::<1>, ncols);
 
         for i in 0..ncols.value() {
             // TODO: avoid bound checking of column.
             unsafe {
-                *res.get_unchecked_mut((0, i)) = f(self.column(i));
+                *res.get_unchecked_mut((0, i)) = MaybeUninit::new(f(self.column(i)));
             }
         }
 
-        res
+        unsafe { res.assume_init() }
     }
 
     /// Returns a column vector where each element is the result of the application of `f` on the
@@ -45,17 +46,16 @@ impl<T: Scalar, R: Dim, C: Dim, S: Storage<T, R, C>> Matrix<T, R, C, S> {
         DefaultAllocator: Allocator<T, C>,
     {
         let ncols = self.data.shape().1;
-        let mut res: OVector<T, C> =
-            unsafe { crate::unimplemented_or_uninitialized_generic!(ncols, Const::<1>) };
+        let mut res = Matrix::new_uninitialized_generic(ncols, Const::<1>);
 
         for i in 0..ncols.value() {
             // TODO: avoid bound checking of column.
             unsafe {
-                *res.vget_unchecked_mut(i) = f(self.column(i));
+                *res.vget_unchecked_mut(i) = MaybeUninit::new(f(self.column(i)));
             }
         }
 
-        res
+        unsafe { res.assume_init() }
     }
 
     /// Returns a column vector resulting from the folding of `f` on each column of this matrix.
@@ -63,19 +63,17 @@ impl<T: Scalar, R: Dim, C: Dim, S: Storage<T, R, C>> Matrix<T, R, C, S> {
     #[must_use]
     pub fn compress_columns(
         &self,
-        init: OVector<T, R>,
+        mut init: OVector<T, R>,
         f: impl Fn(&mut OVector<T, R>, VectorSlice<T, R, S::RStride, S::CStride>),
     ) -> OVector<T, R>
     where
         DefaultAllocator: Allocator<T, R>,
     {
-        let mut res = init;
-
         for i in 0..self.ncols() {
-            f(&mut res, self.column(i))
+            f(&mut init, self.column(i))
         }
 
-        res
+        init
     }
 }
 

@@ -9,11 +9,9 @@ use crate::base::{DefaultAllocator, OMatrix, Scalar};
  * Simd structures.
  *
  */
-impl<T, R, C> SimdValue for OMatrix<T, R, C>
+impl<T, R: Dim, C: Dim> SimdValue for OMatrix<T, R, C>
 where
     T: Scalar + SimdValue,
-    R: Dim,
-    C: Dim,
     T::Element: Scalar,
     DefaultAllocator: Allocator<T, R, C> + Allocator<T::Element, R, C>,
 {

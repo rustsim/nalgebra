@@ -56,21 +56,21 @@ use std::ops::{
     Add, AddAssign, Div, DivAssign, Index, IndexMut, Mul, MulAssign, Neg, Sub, SubAssign,
 };
 
-impl<T: SimdRealField> AsRef<[T; 8]> for DualQuaternion<T> {
+impl<T> AsRef<[T; 8]> for DualQuaternion<T> {
     #[inline]
     fn as_ref(&self) -> &[T; 8] {
-        unsafe { &*(self as *const Self as *const [T; 8]) }
+        unsafe { &*(self as *const _ as *const _) }
     }
 }
 
-impl<T: SimdRealField> AsMut<[T; 8]> for DualQuaternion<T> {
+impl<T> AsMut<[T; 8]> for DualQuaternion<T> {
     #[inline]
     fn as_mut(&mut self) -> &mut [T; 8] {
-        unsafe { &mut *(self as *mut Self as *mut [T; 8]) }
+        unsafe { &mut *(self as *mut _ as *mut _) }
     }
 }
 
-impl<T: SimdRealField> Index<usize> for DualQuaternion<T> {
+impl<T> Index<usize> for DualQuaternion<T> {
     type Output = T;
 
     #[inline]
@@ -79,7 +79,7 @@ impl<T: SimdRealField> Index<usize> for DualQuaternion<T> {
     }
 }
 
-impl<T: SimdRealField> IndexMut<usize> for DualQuaternion<T> {
+impl<T> IndexMut<usize> for DualQuaternion<T> {
     #[inline]
     fn index_mut(&mut self, i: usize) -> &mut T {
         &mut self.as_mut()[i]

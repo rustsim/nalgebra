@@ -1,7 +1,7 @@
 #[cfg(feature = "arbitrary")]
 use crate::base::dimension::U4;
 #[cfg(feature = "arbitrary")]
-use crate::base::storage::Owned;
+use crate::base::storage::InnerOwned;
 #[cfg(feature = "arbitrary")]
 use quickcheck::{Arbitrary, Gen};
 
@@ -179,7 +179,7 @@ where
 #[cfg(feature = "arbitrary")]
 impl<T: SimdRealField + Arbitrary> Arbitrary for Quaternion<T>
 where
-    Owned<T, U4>: Send,
+    InnerOwned<T, U4>: Send,
 {
     #[inline]
     fn arbitrary(g: &mut Gen) -> Self {
@@ -881,8 +881,8 @@ where
 #[cfg(feature = "arbitrary")]
 impl<T: RealField + Arbitrary> Arbitrary for UnitQuaternion<T>
 where
-    Owned<T, U4>: Send,
-    Owned<T, U3>: Send,
+    InnerOwned<T, U4>: Send,
+    InnerOwned<T, U3>: Send,
 {
     #[inline]
     fn arbitrary(g: &mut Gen) -> Self {

@@ -1,5 +1,5 @@
 #[cfg(feature = "arbitrary")]
-use crate::base::storage::Owned;
+use crate::base::storage::InnerOwned;
 #[cfg(feature = "arbitrary")]
 use quickcheck::{Arbitrary, Gen};
 
@@ -77,7 +77,7 @@ where
 #[cfg(feature = "arbitrary")]
 impl<T: Scalar + Arbitrary + Send, const D: usize> Arbitrary for Translation<T, D>
 where
-    Owned<T, crate::Const<D>>: Send,
+    InnerOwned<T, crate::Const<D>>: Send,
 {
     #[inline]
     fn arbitrary(rng: &mut Gen) -> Self {

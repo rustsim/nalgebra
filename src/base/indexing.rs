@@ -2,7 +2,7 @@
 
 use crate::base::storage::{Storage, StorageMut};
 use crate::base::{
-    Const, Dim, DimDiff, DimName, DimSub, Dynamic, Matrix, MatrixSlice, MatrixSliceMut, Scalar, U1,
+    Const, Dim, DimDiff, DimName, DimSub, Dynamic, Matrix, MatrixSlice, MatrixSliceMut, U1,
 };
 
 use std::ops;
@@ -310,7 +310,7 @@ fn dimrange_rangetoinclusive_usize() {
 }
 
 /// A helper trait used for indexing operations.
-pub trait MatrixIndex<'a, T: Scalar, R: Dim, C: Dim, S: Storage<T, R, C>>: Sized {
+pub trait MatrixIndex<'a, T, R: Dim, C: Dim, S: Storage<T, R, C>>: Sized {
     /// The output type returned by methods.
     type Output: 'a;
 
@@ -345,7 +345,7 @@ pub trait MatrixIndex<'a, T: Scalar, R: Dim, C: Dim, S: Storage<T, R, C>>: Sized
 }
 
 /// A helper trait used for indexing operations.
-pub trait MatrixIndexMut<'a, T: Scalar, R: Dim, C: Dim, S: StorageMut<T, R, C>>:
+pub trait MatrixIndexMut<'a, T, R: Dim, C: Dim, S: StorageMut<T, R, C>>:
     MatrixIndex<'a, T, R, C, S>
 {
     /// The output type returned by methods.
@@ -476,7 +476,7 @@ pub trait MatrixIndexMut<'a, T: Scalar, R: Dim, C: Dim, S: StorageMut<T, R, C>>:
 ///                         4, 7,
 ///                         5, 8)));
 /// ```
-impl<T: Scalar, R: Dim, C: Dim, S: Storage<T, R, C>> Matrix<T, R, C, S> {
+impl<T, R: Dim, C: Dim, S: Storage<T, R, C>> Matrix<T, R, C, S> {
     /// Produces a view of the data at the given index, or
     /// `None` if the index is out of bounds.
     #[inline]
@@ -548,11 +548,8 @@ impl<T: Scalar, R: Dim, C: Dim, S: Storage<T, R, C>> Matrix<T, R, C, S> {
 
 // EXTRACT A SINGLE ELEMENT BY 1D LINEAR ADDRESS
 
-impl<'a, T, R, C, S> MatrixIndex<'a, T, R, C, S> for usize
+impl<'a, T: 'a, R: Dim, C: Dim, S> MatrixIndex<'a, T, R, C, S> for usize
 where
-    T: Scalar,
-    R: Dim,
-    C: Dim,
     S: Storage<T, R, C>,
 {
     type Output = &'a T;
@@ -570,11 +567,8 @@ where
     }
 }
 
-impl<'a, T, R, C, S> MatrixIndexMut<'a, T, R, C, S> for usize
+impl<'a, T: 'a, R: Dim, C: Dim, S> MatrixIndexMut<'a, T, R, C, S> for usize
 where
-    T: Scalar,
-    R: Dim,
-    C: Dim,
     S: StorageMut<T, R, C>,
 {
     type OutputMut = &'a mut T;
@@ -591,11 +585,8 @@ where
 
 // EXTRACT A SINGLE ELEMENT BY 2D COORDINATES
 
-impl<'a, T, R, C, S> MatrixIndex<'a, T, R, C, S> for (usize, usize)
+impl<'a, T: 'a, R: Dim, C: Dim, S> MatrixIndex<'a, T, R, C, S> for (usize, usize)
 where
-    T: Scalar,
-    R: Dim,
-    C: Dim,
     S: Storage<T, R, C>,
 {
     type Output = &'a T;
@@ -616,11 +607,8 @@ where
     }
 }
 
-impl<'a, T, R, C, S> MatrixIndexMut<'a, T, R, C, S> for (usize, usize)
+impl<'a, T: 'a, R: Dim, C: Dim, S> MatrixIndexMut<'a, T, R, C, S> for (usize, usize)
 where
-    T: Scalar,
-    R: Dim,
-    C: Dim,
     S: StorageMut<T, R, C>,
 {
     type OutputMut = &'a mut T;
@@ -655,11 +643,9 @@ macro_rules! impl_index_pair {
         $(where $CConstraintType: ty: $CConstraintBound: ident $(<$($CConstraintBoundParams: ty $( = $CEqBound: ty )*),*>)* )*]
     ) =>
     {
-        impl<'a, T, $R, $C, S, $($RTyP : $RTyPB,)* $($CTyP : $CTyPB),*> MatrixIndex<'a, T, $R, $C, S> for ($RIdx, $CIdx)
+        impl<'a, T: 'a, $R: Dim, $C: Dim, S, $($RTyP : $RTyPB,)* $($CTyP : $CTyPB),*>
+            MatrixIndex<'a, T, $R, $C, S> for ($RIdx, $CIdx)
         where
-            T: Scalar,
-            $R: Dim,
-            $C: Dim,
             S: Storage<T, R, C>,
             $( $RConstraintType: $RConstraintBound $(<$( $RConstraintBoundParams $( = $REqBound )*),*>)* ,)*
             $( $CConstraintType: $CConstraintBound $(<$( $CConstraintBoundParams $( = $CEqBound )*),*>)* ),*
@@ -687,15 +673,13 @@ macro_rules! impl_index_pair {
                         (rows.lower(nrows),  cols.lower(ncols)),
                         (rows.length(nrows), cols.length(ncols)));
 
-                Matrix::from_data_statically_unchecked(data)
+                Matrix::from_data(data)
             }
         }
 
-        impl<'a, T, $R, $C, S, $($RTyP : $RTyPB,)* $($CTyP : $CTyPB),*> MatrixIndexMut<'a, T, $R, $C, S> for ($RIdx, $CIdx)
+        impl<'a, T: 'a, $R: Dim, $C: Dim, S, $($RTyP : $RTyPB,)* $($CTyP : $CTyPB),*>
+            MatrixIndexMut<'a, T, $R, $C, S> for ($RIdx, $CIdx)
         where
-            T: Scalar,
-            $R: Dim,
-            $C: Dim,
             S: StorageMut<T, R, C>,
             $( $RConstraintType: $RConstraintBound $(<$( $RConstraintBoundParams $( = $REqBound )*),*>)* ,)*
             $( $CConstraintType: $CConstraintBound $(<$( $CConstraintBoundParams $( = $CEqBound )*),*>)* ),*
@@ -715,7 +699,7 @@ macro_rules! impl_index_pair {
                         (rows.lower(nrows),  cols.lower(ncols)),
                         (rows.length(nrows), cols.length(ncols)));
 
-                Matrix::from_data_statically_unchecked(data)
+                Matrix::from_data(data)
             }
         }
     }

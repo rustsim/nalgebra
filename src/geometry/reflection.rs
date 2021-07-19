@@ -1,3 +1,5 @@
+use std::mem::MaybeUninit;
+
 use crate::base::constraint::{AreMultipliable, DimEq, SameNumberOfRows, ShapeConstraint};
 use crate::base::{Const, Matrix, Unit, Vector};
 use crate::dimension::{Dim, U1};
@@ -7,7 +9,7 @@ use simba::scalar::ComplexField;
 use crate::geometry::Point;
 
 /// A reflection wrt. a plane.
-pub struct Reflection<T, D, S> {
+pub struct Reflection<T, D: Dim, S> {
     axis: Vector<T, D, S>,
     bias: T,
 }
@@ -77,40 +79,40 @@ impl<T: ComplexField, D: Dim, S: Storage<T, D>> Reflection<T, D, S> {
     pub fn reflect_rows<R2: Dim, C2: Dim, S2, S3>(
         &self,
         lhs: &mut Matrix<T, R2, C2, S2>,
-        work: &mut Vector<T, R2, S3>,
+        work: &mut Vector<MaybeUninit<T>, R2, S3>,
     ) where
         S2: StorageMut<T, R2, C2>,
-        S3: StorageMut<T, R2>,
+        S3: StorageMut<MaybeUninit<T>, R2>,
         ShapeConstraint: DimEq<C2, D> + AreMultipliable<R2, C2, D, U1>,
     {
-        lhs.mul_to(&self.axis, work);
+        let mut work = lhs.mul_to(&self.axis, work);
 
         if !self.bias.is_zero() {
             work.add_scalar_mut(-self.bias);
         }
 
         let m_two: T = crate::convert(-2.0f64);
-        lhs.gerc(m_two, work, &self.axis, T::one());
+        lhs.gerc(m_two, &work, &self.axis, T::one());
     }
 
     /// Applies the reflection to the rows of `lhs`.
     pub fn reflect_rows_with_sign<R2: Dim, C2: Dim, S2, S3>(
         &self,
         lhs: &mut Matrix<T, R2, C2, S2>,
-        work: &mut Vector<T, R2, S3>,
+        work: &mut Vector<MaybeUninit<T>, R2, S3>,
         sign: T,
     ) where
         S2: StorageMut<T, R2, C2>,
-        S3: StorageMut<T, R2>,
+        S3: StorageMut<MaybeUninit<T>, R2>,
         ShapeConstraint: DimEq<C2, D> + AreMultipliable<R2, C2, D, U1>,
     {
-        lhs.mul_to(&self.axis, work);
+        let mut work = lhs.mul_to(&self.axis, work);
 
         if !self.bias.is_zero() {
             work.add_scalar_mut(-self.bias);
         }
 
         let m_two = sign.scale(crate::convert(-2.0f64));
-        lhs.gerc(m_two, work, &self.axis, sign);
+        lhs.gerc(m_two, &work, &self.axis, sign);
     }
 }

@@ -1,3 +1,5 @@
+use std::fmt;
+
 #[cfg(feature = "serde-serialize-no-std")]
 use serde::{Deserialize, Serialize};
 
@@ -27,8 +29,7 @@ use crate::linalg::PermutationSequence;
          OMatrix<T, R, C>: Deserialize<'de>,
          PermutationSequence<DimMinimum<R, C>>: Deserialize<'de>"))
 )]
-#[derive(Clone, Debug)]
-pub struct FullPivLU<T: ComplexField, R: DimMin<C>, C: Dim>
+pub struct FullPivLU<T, R: DimMin<C>, C: Dim>
 where
     DefaultAllocator: Allocator<T, R, C> + Allocator<(usize, usize), DimMinimum<R, C>>,
 {
@@ -40,9 +41,39 @@ where
 impl<T: ComplexField, R: DimMin<C>, C: Dim> Copy for FullPivLU<T, R, C>
 where
     DefaultAllocator: Allocator<T, R, C> + Allocator<(usize, usize), DimMinimum<R, C>>,
-    OMatrix<T, R, C>: Copy,
     PermutationSequence<DimMinimum<R, C>>: Copy,
+    OMatrix<T, R, C>: Copy,
 {
+}
+
+impl<T: ComplexField, R: DimMin<C>, C: Dim> Clone for FullPivLU<T, R, C>
+where
+    DefaultAllocator: Allocator<T, R, C> + Allocator<(usize, usize), DimMinimum<R, C>>,
+    PermutationSequence<DimMinimum<R, C>>: Clone,
+    OMatrix<T, R, C>: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            lu: self.lu.clone(),
+            p: self.p.clone(),
+            q: self.q.clone(),
+        }
+    }
+}
+
+impl<T: ComplexField, R: DimMin<C>, C: Dim> fmt::Debug for FullPivLU<T, R, C>
+where
+    DefaultAllocator: Allocator<T, R, C> + Allocator<(usize, usize), DimMinimum<R, C>>,
+    PermutationSequence<DimMinimum<R, C>>: fmt::Debug,
+    OMatrix<T, R, C>: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("FullPivLU")
+            .field("lu", &self.lu)
+            .field("p", &self.p)
+            .field("q", &self.q)
+            .finish()
+    }
 }
 
 impl<T: ComplexField, R: DimMin<C>, C: Dim> FullPivLU<T, R, C>

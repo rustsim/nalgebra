@@ -30,7 +30,6 @@ use crate::linalg::{householder, PermutationSequence};
          PermutationSequence<DimMinimum<R, C>>: Deserialize<'de>,
          OVector<T, DimMinimum<R, C>>: Deserialize<'de>"))
 )]
-#[derive(Clone, Debug)]
 pub struct ColPivQR<T: ComplexField, R: DimMin<C>, C: Dim>
 where
     DefaultAllocator: Allocator<T, R, C>
@@ -53,6 +52,24 @@ where
 {
 }
 
+impl<T: ComplexField, R: DimMin<C>, C: Dim> Clone for ColPivQR<T, R, C>
+where
+    DefaultAllocator: Allocator<T, R, C>
+        + Allocator<T, DimMinimum<R, C>>
+        + Allocator<(usize, usize), DimMinimum<R, C>>,
+    OMatrix<T, R, C>: Clone,
+    PermutationSequence<DimMinimum<R, C>>: Clone,
+    OVector<T, DimMinimum<R, C>>: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            col_piv_qr: self.col_piv_qr.clone(),
+            p: self.p.clone(),
+            diag: self.diag.clone(),
+        }
+    }
+}
+
 impl<T: ComplexField, R: DimMin<C>, C: Dim> ColPivQR<T, R, C>
 where
     DefaultAllocator: Allocator<T, R, C>
@@ -66,14 +83,16 @@ where
         let min_nrows_ncols = nrows.min(ncols);
         let mut p = PermutationSequence::identity_generic(min_nrows_ncols);
 
-        let mut diag =
-            unsafe { crate::unimplemented_or_uninitialized_generic!(min_nrows_ncols, Const::<1>) };
+        let mut diag = Matrix::new_uninitialized_generic(min_nrows_ncols, Const::<1>);
 
         if min_nrows_ncols.value() == 0 {
-            return ColPivQR {
-                col_piv_qr: matrix,
-                p,
-                diag,
+            // Safety: there's no (uninitialized) values.
+            unsafe {
+                return ColPivQR {
+                    col_piv_qr: matrix,
+                    p,
+                    diag: diag.assume_init(),
+                };
             };
         }
 
@@ -83,13 +102,19 @@ where
             matrix.swap_columns(i, col_piv);
             p.append_permutation(i, col_piv);
 
-            householder::clear_column_unchecked(&mut matrix, &mut diag[i], i, 0, None);
+            // Safety: the pointer is valid for writes, aligned, and uninitialized.
+            unsafe {
+                householder::clear_column_unchecked(&mut matrix, diag[i].as_mut_ptr(), i, 0, None);
+            }
         }
 
-        ColPivQR {
-            col_piv_qr: matrix,
-            p,
-            diag,
+        // Safety: all values have been initialized.
+        unsafe {
+            ColPivQR {
+                col_piv_qr: matrix,
+                p,
+                diag: diag.assume_init(),
+            }
         }
     }
 

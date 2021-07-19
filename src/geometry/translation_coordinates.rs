@@ -18,14 +18,14 @@ macro_rules! deref_impl(
 
             #[inline]
             fn deref(&self) -> &Self::Target {
-                unsafe { &*(self as *const Translation<T, $D> as *const Self::Target) }
+                unsafe { &*(self as *const _ as *const _) }
             }
         }
 
         impl<T: Scalar> DerefMut for Translation<T, $D> {
             #[inline]
             fn deref_mut(&mut self) -> &mut Self::Target {
-                unsafe { &mut *(self as *mut Translation<T, $D> as *mut Self::Target) }
+                unsafe { &mut *(self as *mut _ as *mut _) }
             }
         }
     }

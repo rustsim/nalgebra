@@ -242,8 +242,7 @@ where
 
         let mut res = CsMatrix::new_uninitialized_generic(nrows1, ncols2, self.len() + rhs.len());
         let mut timestamps = OVector::zeros_generic(nrows1, Const::<1>);
-        let mut workspace =
-            unsafe { crate::unimplemented_or_uninitialized_generic!(nrows1, Const::<1>) };
+        let mut workspace = Matrix::new_uninitialized_generic(nrows1, Const::<1>);
         let mut nz = 0;
 
         for j in 0..ncols2.value() {

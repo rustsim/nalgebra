@@ -59,12 +59,12 @@ use std::ops::{
 
 use crate::base::dimension::U3;
 use crate::base::storage::Storage;
-use crate::base::{Const, Scalar, Unit, Vector, Vector3};
+use crate::base::{Const, Unit, Vector, Vector3};
 use crate::SimdRealField;
 
 use crate::geometry::{Point3, Quaternion, Rotation, UnitQuaternion};
 
-impl<T: Scalar> Index<usize> for Quaternion<T> {
+impl<T> Index<usize> for Quaternion<T> {
     type Output = T;
 
     #[inline]
@@ -73,7 +73,7 @@ impl<T: Scalar> Index<usize> for Quaternion<T> {
     }
 }
 
-impl<T: Scalar> IndexMut<usize> for Quaternion<T> {
+impl<T> IndexMut<usize> for Quaternion<T> {
     #[inline]
     fn index_mut(&mut self, i: usize) -> &mut T {
         &mut self.coords[i]
@@ -371,12 +371,12 @@ quaternion_op_impl!(
     ;
     self: Rotation<T, 3>, rhs: UnitQuaternion<T>,
     Output = UnitQuaternion<T>;
-    UnitQuaternion::<T>::from_rotation_matrix(&self) / rhs; );
+    UnitQuaternion::<T>::from_rotation_matrix(&self) / rhs;);
 
 // UnitQuaternion × Vector
 quaternion_op_impl!(
     Mul, mul;
-    SB: Storage<T, Const<3>> ;
+    SB: Storage<T, Const<3>>;
     self: &'a UnitQuaternion<T>, rhs: &'b Vector<T, Const<3>, SB>,
     Output = Vector3<T>;
     {

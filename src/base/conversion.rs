@@ -1,8 +1,10 @@
+use std::borrow::{Borrow, BorrowMut};
+use std::convert::{AsMut, AsRef, From, Into};
+use std::mem::{self, ManuallyDrop, MaybeUninit};
+
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::vec::Vec;
 use simba::scalar::{SubsetOf, SupersetOf};
-use std::borrow::{Borrow, BorrowMut};
-use std::convert::{AsMut, AsRef, From, Into};
 
 use simba::simd::{PrimitiveSimdValue, SimdValue};
 
@@ -26,14 +28,10 @@ use crate::constraint::DimEq;
 use crate::{IsNotStaticOne, RowSVector, SMatrix, SVector};
 
 // TODO: too bad this won't work for slice conversions.
-impl<T1, T2, R1, C1, R2, C2> SubsetOf<OMatrix<T2, R2, C2>> for OMatrix<T1, R1, C1>
+impl<T1, T2, R1: Dim, C1: Dim, R2: Dim, C2: Dim> SubsetOf<OMatrix<T2, R2, C2>>
+    for OMatrix<T1, R1, C1>
 where
-    R1: Dim,
-    C1: Dim,
-    R2: Dim,
-    C2: Dim,
-    T1: Scalar,
-    T2: Scalar + SupersetOf<T1>,
+    T2: SupersetOf<T1>,
     DefaultAllocator:
         Allocator<T2, R2, C2> + Allocator<T1, R1, C1> + SameShapeAllocator<T1, R1, C1, R2, C2>,
     ShapeConstraint: SameNumberOfRows<R1, R2> + SameNumberOfColumns<C1, C2>,
@@ -44,17 +42,19 @@ where
         let nrows2 = R2::from_usize(nrows);
         let ncols2 = C2::from_usize(ncols);
 
-        let mut res: OMatrix<T2, R2, C2> =
-            unsafe { crate::unimplemented_or_uninitialized_generic!(nrows2, ncols2) };
+        let mut res = Matrix::new_uninitialized_generic(nrows2, ncols2);
+
         for i in 0..nrows {
             for j in 0..ncols {
                 unsafe {
-                    *res.get_unchecked_mut((i, j)) = T2::from_subset(self.get_unchecked((i, j)))
+                    *res.get_unchecked_mut((i, j)) =
+                        MaybeUninit::new(T2::from_subset(self.get_unchecked((i, j))));
                 }
             }
         }
 
-        res
+        // Safety: all entries have been initialized.
+        unsafe { res.assume_init() }
     }
 
     #[inline]
@@ -68,20 +68,22 @@ where
         let nrows = R1::from_usize(nrows2);
         let ncols = C1::from_usize(ncols2);
 
-        let mut res: Self = unsafe { crate::unimplemented_or_uninitialized_generic!(nrows, ncols) };
+        let mut res = OMatrix::new_uninitialized_generic(nrows, ncols);
         for i in 0..nrows2 {
             for j in 0..ncols2 {
                 unsafe {
-                    *res.get_unchecked_mut((i, j)) = m.get_unchecked((i, j)).to_subset_unchecked()
+                    *res.get_unchecked_mut((i, j)) =
+                        MaybeUninit::new(m.get_unchecked((i, j)).to_subset_unchecked());
                 }
             }
         }
 
-        res
+        // Safety: all entries have been initialized.
+        unsafe { res.assume_init() }
     }
 }
 
-impl<'a, T: Scalar, R: Dim, C: Dim, S: Storage<T, R, C>> IntoIterator for &'a Matrix<T, R, C, S> {
+impl<'a, T, R: Dim, C: Dim, S: Storage<T, R, C>> IntoIterator for &'a Matrix<T, R, C, S> {
     type Item = &'a T;
     type IntoIter = MatrixIter<'a, T, R, C, S>;
 
@@ -91,9 +93,7 @@ impl<'a, T: Scalar, R: Dim, C: Dim, S: Storage<T, R, C>> IntoIterator for &'a Ma
     }
 }
 
-impl<'a, T: Scalar, R: Dim, C: Dim, S: StorageMut<T, R, C>> IntoIterator
-    for &'a mut Matrix<T, R, C, S>
-{
+impl<'a, T, R: Dim, C: Dim, S: StorageMut<T, R, C>> IntoIterator for &'a mut Matrix<T, R, C, S> {
     type Item = &'a mut T;
     type IntoIter = MatrixIterMut<'a, T, R, C, S>;
 
@@ -103,32 +103,35 @@ impl<'a, T: Scalar, R: Dim, C: Dim, S: StorageMut<T, R, C>> IntoIterator
     }
 }
 
-impl<T: Scalar, const D: usize> From<[T; D]> for SVector<T, D> {
+impl<T, const D: usize> From<[T; D]> for SVector<T, D> {
     #[inline]
     fn from(arr: [T; D]) -> Self {
-        unsafe { Self::from_data_statically_unchecked(ArrayStorage([arr; 1])) }
+        Self::from_data(ArrayStorage([arr; 1]))
     }
 }
 
-impl<T: Scalar, const D: usize> From<SVector<T, D>> for [T; D] {
+impl<T, const D: usize> From<SVector<T, D>> for [T; D] {
     #[inline]
     fn from(vec: SVector<T, D>) -> Self {
-        // TODO: unfortunately, we must clone because we can move out of an array.
-        vec.data.0[0].clone()
+        let data = ManuallyDrop::new(vec.data.0);
+        // Safety: [[T; D]; 1] always has the same data layout as [T; D].
+        let res = unsafe { (data.as_ptr() as *const [_; D]).read() };
+        mem::forget(data);
+        res
     }
 }
 
-impl<T: Scalar, const D: usize> From<[T; D]> for RowSVector<T, D>
+impl<T: Clone, const D: usize> From<[T; D]> for RowSVector<T, D>
 where
     Const<D>: IsNotStaticOne,
 {
     #[inline]
     fn from(arr: [T; D]) -> Self {
-        SVector::<T, D>::from(arr).transpose()
+        SVector::<T, D>::from(arr).transpose_into()
     }
 }
 
-impl<T: Scalar, const D: usize> From<RowSVector<T, D>> for [T; D]
+impl<T: Clone, const D: usize> From<RowSVector<T, D>> for [T; D]
 where
     Const<D>: IsNotStaticOne,
 {
@@ -141,7 +144,7 @@ where
 macro_rules! impl_from_into_asref_1D(
     ($(($NRows: ident, $NCols: ident) => $SZ: expr);* $(;)*) => {$(
         impl<T, S> AsRef<[T; $SZ]> for Matrix<T, $NRows, $NCols, S>
-        where T: Scalar,
+        where
               S: ContiguousStorage<T, $NRows, $NCols> {
             #[inline]
             fn as_ref(&self) -> &[T; $SZ] {
@@ -152,7 +155,7 @@ macro_rules! impl_from_into_asref_1D(
         }
 
         impl<T, S> AsMut<[T; $SZ]> for Matrix<T, $NRows, $NCols, S>
-        where T: Scalar,
+        where
               S: ContiguousStorageMut<T, $NRows, $NCols> {
             #[inline]
             fn as_mut(&mut self) -> &mut [T; $SZ] {
@@ -179,14 +182,14 @@ impl_from_into_asref_1D!(
     (U13, U1) => 13; (U14, U1) => 14; (U15, U1) => 15; (U16, U1) => 16;
 );
 
-impl<T: Scalar, const R: usize, const C: usize> From<[[T; R]; C]> for SMatrix<T, R, C> {
+impl<T, const R: usize, const C: usize> From<[[T; R]; C]> for SMatrix<T, R, C> {
     #[inline]
     fn from(arr: [[T; R]; C]) -> Self {
-        unsafe { Self::from_data_statically_unchecked(ArrayStorage(arr)) }
+        Self::from_data(ArrayStorage(arr))
     }
 }
 
-impl<T: Scalar, const R: usize, const C: usize> From<SMatrix<T, R, C>> for [[T; R]; C] {
+impl<T, const R: usize, const C: usize> From<SMatrix<T, R, C>> for [[T; R]; C] {
     #[inline]
     fn from(vec: SMatrix<T, R, C>) -> Self {
         vec.data.0
@@ -200,7 +203,7 @@ macro_rules! impl_from_into_asref_borrow_2D(
         ($NRows: ty, $NCols: ty) => ($SZRows: expr, $SZCols: expr);
         $Ref:ident.$ref:ident(), $Mut:ident.$mut:ident()
     ) => {
-        impl<T: Scalar, S> $Ref<[[T; $SZRows]; $SZCols]> for Matrix<T, $NRows, $NCols, S>
+        impl<T, S> $Ref<[[T; $SZRows]; $SZCols]> for Matrix<T, $NRows, $NCols, S>
         where S: ContiguousStorage<T, $NRows, $NCols> {
             #[inline]
             fn $ref(&self) -> &[[T; $SZRows]; $SZCols] {
@@ -210,7 +213,7 @@ macro_rules! impl_from_into_asref_borrow_2D(
             }
         }
 
-        impl<T: Scalar, S> $Mut<[[T; $SZRows]; $SZCols]> for Matrix<T, $NRows, $NCols, S>
+        impl<T, S> $Mut<[[T; $SZRows]; $SZCols]> for Matrix<T, $NRows, $NCols, S>
         where S: ContiguousStorageMut<T, $NRows, $NCols> {
             #[inline]
             fn $mut(&mut self) -> &mut [[T; $SZRows]; $SZCols] {
@@ -241,13 +244,9 @@ impl_from_into_asref_borrow_2D!(
     (U6, U2) => (6, 2); (U6, U3) => (6, 3); (U6, U4) => (6, 4); (U6, U5) => (6, 5); (U6, U6) => (6, 6);
 );
 
-impl<'a, T, RStride, CStride, const R: usize, const C: usize>
+impl<'a, T: Clone, RStride: Dim, CStride: Dim, const R: usize, const C: usize>
     From<MatrixSlice<'a, T, Const<R>, Const<C>, RStride, CStride>>
     for Matrix<T, Const<R>, Const<C>, ArrayStorage<T, R, C>>
-where
-    T: Scalar,
-    RStride: Dim,
-    CStride: Dim,
 {
     fn from(matrix_slice: MatrixSlice<'a, T, Const<R>, Const<C>, RStride, CStride>) -> Self {
         matrix_slice.into_owned()
@@ -255,13 +254,9 @@ where
 }
 
 #[cfg(any(feature = "std", feature = "alloc"))]
-impl<'a, T, C, RStride, CStride> From<MatrixSlice<'a, T, Dynamic, C, RStride, CStride>>
+impl<'a, T: Clone, C: Dim, RStride: Dim, CStride: Dim>
+    From<MatrixSlice<'a, T, Dynamic, C, RStride, CStride>>
     for Matrix<T, Dynamic, C, VecStorage<T, Dynamic, C>>
-where
-    T: Scalar,
-    C: Dim,
-    RStride: Dim,
-    CStride: Dim,
 {
     fn from(matrix_slice: MatrixSlice<'a, T, Dynamic, C, RStride, CStride>) -> Self {
         matrix_slice.into_owned()
@@ -269,26 +264,18 @@ where
 }
 
 #[cfg(any(feature = "std", feature = "alloc"))]
-impl<'a, T, R, RStride, CStride> From<MatrixSlice<'a, T, R, Dynamic, RStride, CStride>>
+impl<'a, T: Clone, R: DimName, RStride: Dim, CStride: Dim>
+    From<MatrixSlice<'a, T, R, Dynamic, RStride, CStride>>
     for Matrix<T, R, Dynamic, VecStorage<T, R, Dynamic>>
-where
-    T: Scalar,
-    R: DimName,
-    RStride: Dim,
-    CStride: Dim,
 {
     fn from(matrix_slice: MatrixSlice<'a, T, R, Dynamic, RStride, CStride>) -> Self {
         matrix_slice.into_owned()
     }
 }
 
-impl<'a, T, RStride, CStride, const R: usize, const C: usize>
+impl<'a, T: Clone, RStride: Dim, CStride: Dim, const R: usize, const C: usize>
     From<MatrixSliceMut<'a, T, Const<R>, Const<C>, RStride, CStride>>
     for Matrix<T, Const<R>, Const<C>, ArrayStorage<T, R, C>>
-where
-    T: Scalar,
-    RStride: Dim,
-    CStride: Dim,
 {
     fn from(matrix_slice: MatrixSliceMut<'a, T, Const<R>, Const<C>, RStride, CStride>) -> Self {
         matrix_slice.into_owned()
@@ -296,13 +283,9 @@ where
 }
 
 #[cfg(any(feature = "std", feature = "alloc"))]
-impl<'a, T, C, RStride, CStride> From<MatrixSliceMut<'a, T, Dynamic, C, RStride, CStride>>
+impl<'a, T: Clone, C: Dim, RStride: Dim, CStride: Dim>
+    From<MatrixSliceMut<'a, T, Dynamic, C, RStride, CStride>>
     for Matrix<T, Dynamic, C, VecStorage<T, Dynamic, C>>
-where
-    T: Scalar,
-    C: Dim,
-    RStride: Dim,
-    CStride: Dim,
 {
     fn from(matrix_slice: MatrixSliceMut<'a, T, Dynamic, C, RStride, CStride>) -> Self {
         matrix_slice.into_owned()
@@ -310,29 +293,18 @@ where
 }
 
 #[cfg(any(feature = "std", feature = "alloc"))]
-impl<'a, T, R, RStride, CStride> From<MatrixSliceMut<'a, T, R, Dynamic, RStride, CStride>>
+impl<'a, T: Clone, R: DimName, RStride: Dim, CStride: Dim>
+    From<MatrixSliceMut<'a, T, R, Dynamic, RStride, CStride>>
     for Matrix<T, R, Dynamic, VecStorage<T, R, Dynamic>>
-where
-    T: Scalar,
-    R: DimName,
-    RStride: Dim,
-    CStride: Dim,
 {
     fn from(matrix_slice: MatrixSliceMut<'a, T, R, Dynamic, RStride, CStride>) -> Self {
         matrix_slice.into_owned()
     }
 }
 
-impl<'a, T, R, C, RSlice, CSlice, RStride, CStride, S> From<&'a Matrix<T, R, C, S>>
-    for MatrixSlice<'a, T, RSlice, CSlice, RStride, CStride>
+impl<'a, T, R: Dim, C: Dim, RSlice: Dim, CSlice: Dim, RStride: Dim, CStride: Dim, S>
+    From<&'a Matrix<T, R, C, S>> for MatrixSlice<'a, T, RSlice, CSlice, RStride, CStride>
 where
-    T: Scalar,
-    R: Dim,
-    C: Dim,
-    RSlice: Dim,
-    CSlice: Dim,
-    RStride: Dim,
-    CStride: Dim,
     S: Storage<T, R, C>,
     ShapeConstraint: DimEq<R, RSlice>
         + DimEq<C, CSlice>
@@ -355,21 +327,15 @@ where
                 (row_slice, col_slice),
                 (rstride_slice, cstride_slice),
             );
-            Matrix::from_data_statically_unchecked(data)
+
+            Self::from_data(data)
         }
     }
 }
 
-impl<'a, T, R, C, RSlice, CSlice, RStride, CStride, S> From<&'a mut Matrix<T, R, C, S>>
-    for MatrixSlice<'a, T, RSlice, CSlice, RStride, CStride>
+impl<'a, T, R: Dim, C: Dim, RSlice: Dim, CSlice: Dim, RStride: Dim, CStride: Dim, S>
+    From<&'a mut Matrix<T, R, C, S>> for MatrixSlice<'a, T, RSlice, CSlice, RStride, CStride>
 where
-    T: Scalar,
-    R: Dim,
-    C: Dim,
-    RSlice: Dim,
-    CSlice: Dim,
-    RStride: Dim,
-    CStride: Dim,
     S: Storage<T, R, C>,
     ShapeConstraint: DimEq<R, RSlice>
         + DimEq<C, CSlice>
@@ -392,21 +358,15 @@ where
                 (row_slice, col_slice),
                 (rstride_slice, cstride_slice),
             );
-            Matrix::from_data_statically_unchecked(data)
+
+            Matrix::from_data(data)
         }
     }
 }
 
-impl<'a, T, R, C, RSlice, CSlice, RStride, CStride, S> From<&'a mut Matrix<T, R, C, S>>
-    for MatrixSliceMut<'a, T, RSlice, CSlice, RStride, CStride>
+impl<'a, T, R: Dim, C: Dim, RSlice: Dim, CSlice: Dim, RStride: Dim, CStride: Dim, S>
+    From<&'a mut Matrix<T, R, C, S>> for MatrixSliceMut<'a, T, RSlice, CSlice, RStride, CStride>
 where
-    T: Scalar,
-    R: Dim,
-    C: Dim,
-    RSlice: Dim,
-    CSlice: Dim,
-    RStride: Dim,
-    CStride: Dim,
     S: StorageMut<T, R, C>,
     ShapeConstraint: DimEq<R, RSlice>
         + DimEq<C, CSlice>
@@ -429,21 +389,22 @@ where
                 (row_slice, col_slice),
                 (rstride_slice, cstride_slice),
             );
-            Matrix::from_data_statically_unchecked(data)
+
+            Matrix::from_data(data)
         }
     }
 }
 
 #[cfg(any(feature = "std", feature = "alloc"))]
-impl<'a, T: Scalar> From<Vec<T>> for DVector<T> {
+impl<'a, T> From<Vec<T>> for DVector<T> {
     #[inline]
     fn from(vec: Vec<T>) -> Self {
         Self::from_vec(vec)
     }
 }
 
-impl<'a, T: Scalar + Copy, R: Dim, C: Dim, S: ContiguousStorage<T, R, C>>
-    From<&'a Matrix<T, R, C, S>> for &'a [T]
+impl<'a, T, R: Dim, C: Dim, S: ContiguousStorage<T, R, C>> From<&'a Matrix<T, R, C, S>>
+    for &'a [T]
 {
     #[inline]
     fn from(matrix: &'a Matrix<T, R, C, S>) -> Self {
@@ -451,8 +412,8 @@ impl<'a, T: Scalar + Copy, R: Dim, C: Dim, S: ContiguousStorage<T, R, C>>
     }
 }
 
-impl<'a, T: Scalar + Copy, R: Dim, C: Dim, S: ContiguousStorageMut<T, R, C>>
-    From<&'a mut Matrix<T, R, C, S>> for &'a mut [T]
+impl<'a, T, R: Dim, C: Dim, S: ContiguousStorageMut<T, R, C>> From<&'a mut Matrix<T, R, C, S>>
+    for &'a mut [T]
 {
     #[inline]
     fn from(matrix: &'a mut Matrix<T, R, C, S>) -> Self {
@@ -460,27 +421,27 @@ impl<'a, T: Scalar + Copy, R: Dim, C: Dim, S: ContiguousStorageMut<T, R, C>>
     }
 }
 
-impl<'a, T: Scalar + Copy> From<&'a [T]> for DVectorSlice<'a, T> {
+impl<'a, T> From<&'a [T]> for DVectorSlice<'a, T> {
     #[inline]
     fn from(slice: &'a [T]) -> Self {
         Self::from_slice(slice, slice.len())
     }
 }
 
-impl<'a, T: Scalar> From<DVectorSlice<'a, T>> for &'a [T] {
+impl<'a, T> From<DVectorSlice<'a, T>> for &'a [T] {
     fn from(vec: DVectorSlice<'a, T>) -> &'a [T] {
         vec.data.into_slice()
     }
 }
 
-impl<'a, T: Scalar + Copy> From<&'a mut [T]> for DVectorSliceMut<'a, T> {
+impl<'a, T> From<&'a mut [T]> for DVectorSliceMut<'a, T> {
     #[inline]
     fn from(slice: &'a mut [T]) -> Self {
         Self::from_slice(slice, slice.len())
     }
 }
 
-impl<'a, T: Scalar> From<DVectorSliceMut<'a, T>> for &'a mut [T] {
+impl<'a, T> From<DVectorSliceMut<'a, T>> for &'a mut [T] {
     fn from(vec: DVectorSliceMut<'a, T>) -> &'a mut [T] {
         vec.data.into_slice_mut()
     }

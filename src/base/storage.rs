@@ -1,31 +1,30 @@
 //! Abstract definition of a matrix data storage.
 
-use std::fmt::Debug;
 use std::ptr;
 
-use crate::base::allocator::{Allocator, SameShapeC, SameShapeR};
+use crate::base::allocator::{Allocator, InnerAllocator, SameShapeC, SameShapeR};
 use crate::base::default_allocator::DefaultAllocator;
 use crate::base::dimension::{Dim, U1};
-use crate::base::Scalar;
+use crate::base::Owned;
 
 /*
  * Aliases for allocation results.
  */
 /// The data storage for the sum of two matrices with dimensions `(R1, C1)` and `(R2, C2)`.
 pub type SameShapeStorage<T, R1, C1, R2, C2> =
-    <DefaultAllocator as Allocator<T, SameShapeR<R1, R2>, SameShapeC<C1, C2>>>::Buffer;
+    <DefaultAllocator as InnerAllocator<T, SameShapeR<R1, R2>, SameShapeC<C1, C2>>>::Buffer;
 
 // TODO: better name than Owned ?
 /// The owned data storage that can be allocated from `S`.
-pub type Owned<T, R, C = U1> = <DefaultAllocator as Allocator<T, R, C>>::Buffer;
+pub type InnerOwned<T, R, C = U1> = <DefaultAllocator as InnerAllocator<T, R, C>>::Buffer;
 
 /// The row-stride of the owned data storage for a buffer of dimension `(R, C)`.
 pub type RStride<T, R, C = U1> =
-    <<DefaultAllocator as Allocator<T, R, C>>::Buffer as Storage<T, R, C>>::RStride;
+    <<DefaultAllocator as InnerAllocator<T, R, C>>::Buffer as Storage<T, R, C>>::RStride;
 
 /// The column-stride of the owned data storage for a buffer of dimension `(R, C)`.
 pub type CStride<T, R, C = U1> =
-    <<DefaultAllocator as Allocator<T, R, C>>::Buffer as Storage<T, R, C>>::CStride;
+    <<DefaultAllocator as InnerAllocator<T, R, C>>::Buffer as Storage<T, R, C>>::CStride;
 
 /// The trait shared by all matrix data storage.
 ///
@@ -36,7 +35,7 @@ pub type CStride<T, R, C = U1> =
 /// should **not** allow the user to modify the size of the underlying buffer with safe methods
 /// (for example the `VecStorage::data_mut` method is unsafe because the user could change the
 /// vector's size so that it no longer contains enough elements: this will lead to UB.
-pub unsafe trait Storage<T: Scalar, R: Dim, C: Dim = U1>: Debug + Sized {
+pub unsafe trait Storage<T, R: Dim, C: Dim = U1>: Sized {
     /// The static stride of this storage's rows.
     type RStride: Dim;
 
@@ -125,11 +124,13 @@ pub unsafe trait Storage<T: Scalar, R: Dim, C: Dim = U1>: Debug + Sized {
     /// Builds a matrix data storage that does not contain any reference.
     fn into_owned(self) -> Owned<T, R, C>
     where
+        T: Clone,
         DefaultAllocator: Allocator<T, R, C>;
 
     /// Clones this data storage to one that does not contain any reference.
     fn clone_owned(&self) -> Owned<T, R, C>
     where
+        T: Clone,
         DefaultAllocator: Allocator<T, R, C>;
 }
 
@@ -138,7 +139,7 @@ pub unsafe trait Storage<T: Scalar, R: Dim, C: Dim = U1>: Debug + Sized {
 /// Note that a mutable access does not mean that the matrix owns its data. For example, a mutable
 /// matrix slice can provide mutable access to its elements even if it does not own its data (it
 /// contains only an internal reference to them).
-pub unsafe trait StorageMut<T: Scalar, R: Dim, C: Dim = U1>: Storage<T, R, C> {
+pub unsafe trait StorageMut<T, R: Dim, C: Dim = U1>: Storage<T, R, C> {
     /// The matrix mutable data pointer.
     fn ptr_mut(&mut self) -> *mut T;
 
@@ -218,9 +219,7 @@ pub unsafe trait StorageMut<T: Scalar, R: Dim, C: Dim = U1>: Storage<T, R, C> {
 /// The storage requirement means that for any value of `i` in `[0, nrows * ncols - 1]`, the value
 /// `.get_unchecked_linear` returns one of the matrix component. This trait is unsafe because
 /// failing to comply to this may cause Undefined Behaviors.
-pub unsafe trait ContiguousStorage<T: Scalar, R: Dim, C: Dim = U1>:
-    Storage<T, R, C>
-{
+pub unsafe trait ContiguousStorage<T, R: Dim, C: Dim = U1>: Storage<T, R, C> {
     /// Converts this data storage to a contiguous slice.
     fn as_slice(&self) -> &[T] {
         // SAFETY: this is safe because this trait guarantees the fact
@@ -234,7 +233,7 @@ pub unsafe trait ContiguousStorage<T: Scalar, R: Dim, C: Dim = U1>:
 /// The storage requirement means that for any value of `i` in `[0, nrows * ncols - 1]`, the value
 /// `.get_unchecked_linear` returns one of the matrix component. This trait is unsafe because
 /// failing to comply to this may cause Undefined Behaviors.
-pub unsafe trait ContiguousStorageMut<T: Scalar, R: Dim, C: Dim = U1>:
+pub unsafe trait ContiguousStorageMut<T, R: Dim, C: Dim = U1>:
     ContiguousStorage<T, R, C> + StorageMut<T, R, C>
 {
     /// Converts this data storage to a contiguous mutable slice.
@@ -246,14 +245,7 @@ pub unsafe trait ContiguousStorageMut<T: Scalar, R: Dim, C: Dim = U1>:
 }
 
 /// A matrix storage that can be reshaped in-place.
-pub trait ReshapableStorage<T, R1, C1, R2, C2>: Storage<T, R1, C1>
-where
-    T: Scalar,
-    R1: Dim,
-    C1: Dim,
-    R2: Dim,
-    C2: Dim,
-{
+pub trait ReshapableStorage<T, R1: Dim, C1: Dim, R2: Dim, C2: Dim>: Storage<T, R1, C1> {
     /// The reshaped storage type.
     type Output: Storage<T, R2, C2>;
 

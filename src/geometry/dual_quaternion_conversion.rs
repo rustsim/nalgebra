@@ -24,8 +24,7 @@ use crate::geometry::{
 
 impl<T1, T2> SubsetOf<DualQuaternion<T2>> for DualQuaternion<T1>
 where
-    T1: SimdRealField,
-    T2: SimdRealField + SupersetOf<T1>,
+    T2: SupersetOf<T1>,
 {
     #[inline]
     fn to_superset(&self) -> DualQuaternion<T2> {
@@ -49,8 +48,7 @@ where
 
 impl<T1, T2> SubsetOf<UnitDualQuaternion<T2>> for UnitDualQuaternion<T1>
 where
-    T1: SimdRealField,
-    T2: SimdRealField + SupersetOf<T1>,
+    T2: SupersetOf<T1>,
 {
     #[inline]
     fn to_superset(&self) -> UnitDualQuaternion<T2> {

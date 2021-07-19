@@ -1,23 +1,48 @@
-#[cfg(feature = "arbitrary")]
-use crate::base::storage::Owned;
+use std::fmt;
+
 #[cfg(feature = "arbitrary")]
 use quickcheck::{Arbitrary, Gen};
 
 use crate::base::allocator::Allocator;
 use crate::base::dimension::{Dim, Dynamic};
-use crate::base::Scalar;
-use crate::base::{DefaultAllocator, OMatrix};
+use crate::base::{DefaultAllocator, OMatrix, Owned};
 use simba::scalar::ComplexField;
 
 use crate::debug::RandomOrthogonal;
 
 /// A random, well-conditioned, symmetric definite-positive matrix.
-#[derive(Clone, Debug)]
-pub struct RandomSDP<T: Scalar, D: Dim = Dynamic>
+pub struct RandomSDP<T, D: Dim = Dynamic>
 where
     DefaultAllocator: Allocator<T, D, D>,
 {
     m: OMatrix<T, D, D>,
+}
+
+impl<T: Copy, D: Dim> Copy for RandomSDP<T, D>
+where
+    DefaultAllocator: Allocator<T, D, D>,
+    Owned<T, D, D>: Copy,
+{
+}
+
+impl<T: Clone, D: Dim> Clone for RandomSDP<T, D>
+where
+    DefaultAllocator: Allocator<T, D, D>,
+    Owned<T, D, D>: Clone,
+{
+    fn clone(&self) -> Self {
+        Self { m: self.m.clone() }
+    }
+}
+
+impl<T: fmt::Debug, D: Dim> fmt::Debug for RandomSDP<T, D>
+where
+    DefaultAllocator: Allocator<T, D, D>,
+    Owned<T, D, D>: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("RandomSDP").field("m", &self.m).finish()
+    }
 }
 
 impl<T: ComplexField, D: Dim> RandomSDP<T, D>

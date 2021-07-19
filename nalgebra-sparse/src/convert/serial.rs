@@ -16,11 +16,9 @@ use crate::csc::CscMatrix;
 use crate::csr::CsrMatrix;
 
 /// Converts a dense matrix to [`CooMatrix`].
-pub fn convert_dense_coo<T, R, C, S>(dense: &Matrix<T, R, C, S>) -> CooMatrix<T>
+pub fn convert_dense_coo<T, R: Dim, C: Dim, S>(dense: &Matrix<T, R, C, S>) -> CooMatrix<T>
 where
-    T: Scalar + Zero,
-    R: Dim,
-    C: Dim,
+    T: Scalar + Zero + PartialEq,
     S: Storage<T, R, C>,
 {
     let mut coo = CooMatrix::new(dense.nrows(), dense.ncols());
@@ -93,7 +91,7 @@ where
 /// Converts a dense matrix to a [`CsrMatrix`].
 pub fn convert_dense_csr<T, R, C, S>(dense: &Matrix<T, R, C, S>) -> CsrMatrix<T>
 where
-    T: Scalar + Zero,
+    T: Scalar + Zero + PartialEq,
     R: Dim,
     C: Dim,
     S: Storage<T, R, C>,
@@ -170,7 +168,7 @@ where
 /// Converts a dense matrix to a [`CscMatrix`].
 pub fn convert_dense_csc<T, R, C, S>(dense: &Matrix<T, R, C, S>) -> CscMatrix<T>
 where
-    T: Scalar + Zero,
+    T: Scalar + Zero + PartialEq,
     R: Dim,
     C: Dim,
     S: Storage<T, R, C>,

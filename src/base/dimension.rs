@@ -2,7 +2,7 @@
 
 //! Traits and tags for identifying the dimension of all algebraic entities.
 
-use std::any::{Any, TypeId};
+use std::any::TypeId;
 use std::cmp;
 use std::fmt::Debug;
 use std::ops::{Add, Div, Mul, Sub};
@@ -11,8 +11,8 @@ use typenum::{self, Diff, Max, Maximum, Min, Minimum, Prod, Quot, Sum, Unsigned}
 #[cfg(feature = "serde-serialize-no-std")]
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-/// Dim of dynamically-sized algebraic entities.
-#[derive(Clone, Copy, Eq, PartialEq, Debug)]
+/// Stores the dimension of dynamically-sized algebraic entities.
+#[derive(Clone, Copy, Default, Eq, PartialEq, Debug)]
 pub struct Dynamic {
     value: usize,
 }
@@ -55,7 +55,7 @@ impl IsNotStaticOne for Dynamic {}
 
 /// Trait implemented by any type that can be used as a dimension. This includes type-level
 /// integers and `Dynamic` (for dimensions not known at compile-time).
-pub trait Dim: Any + Debug + Copy + PartialEq + Send + Sync {
+pub trait Dim: 'static + Debug + Copy + Default + PartialEq + Send + Sync {
     #[inline(always)]
     fn is<D: Dim>() -> bool {
         TypeId::of::<Self>() == TypeId::of::<D>()
@@ -64,6 +64,16 @@ pub trait Dim: Any + Debug + Copy + PartialEq + Send + Sync {
     /// Gets the compile-time value of `Self`. Returns `None` if it is not known, i.e., if `Self =
     /// Dynamic`.
     fn try_to_usize() -> Option<usize>;
+
+    /// Returns whether `Self` has a known compile-time value.
+    fn is_static() -> bool {
+        Self::try_to_usize().is_some()
+    }
+
+    /// Returns whether `Self` does not have a known compile-time value.
+    fn is_dynamic() -> bool {
+        Self::try_to_usize().is_none()
+    }
 
     /// Gets the run-time value of `self`. For type-level integers, this is the same as
     /// `Self::try_to_usize().unwrap()`.
@@ -196,7 +206,10 @@ dim_ops!(
     DimMax, DimNameMax, Max, max, cmp::max, DimMaximum, DimNameMaximum, Maximum;
 );
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+/// A wrapper around const types, which provides the capability of performing
+/// type-level arithmetic. This might get removed if const-generics become
+/// more powerful in the future.
+#[derive(Debug, Copy, Clone, Default, PartialEq, Eq, Hash)]
 pub struct Const<const R: usize>;
 
 /// Trait implemented exclusively by type-level integers.

@@ -1,3 +1,5 @@
+use std::fmt;
+
 use num::Zero;
 #[cfg(feature = "serde-serialize-no-std")]
 use serde::{Deserialize, Serialize};
@@ -6,7 +8,7 @@ use crate::allocator::{Allocator, Reallocator};
 use crate::base::{DefaultAllocator, Matrix, OMatrix, OVector, Unit};
 use crate::constraint::{SameNumberOfRows, ShapeConstraint};
 use crate::dimension::{Const, Dim, DimMin, DimMinimum};
-use crate::storage::{Storage, StorageMut};
+use crate::storage::{InnerOwned, Storage, StorageMut};
 use simba::scalar::ComplexField;
 
 use crate::geometry::Reflection;
@@ -28,8 +30,8 @@ use crate::linalg::householder;
          OMatrix<T, R, C>: Deserialize<'de>,
          OVector<T, DimMinimum<R, C>>: Deserialize<'de>"))
 )]
-#[derive(Clone, Debug)]
-pub struct QR<T: ComplexField, R: DimMin<C>, C: Dim>
+
+pub struct QR<T, R: DimMin<C>, C: Dim>
 where
     DefaultAllocator: Allocator<T, R, C> + Allocator<T, DimMinimum<R, C>>,
 {
@@ -37,12 +39,42 @@ where
     diag: OVector<T, DimMinimum<R, C>>,
 }
 
-impl<T: ComplexField, R: DimMin<C>, C: Dim> Copy for QR<T, R, C>
+/*
+impl<T: Copy, R: DimMin<C>, C: Dim> Copy for QR<T, R, C>
 where
     DefaultAllocator: Allocator<T, R, C> + Allocator<T, DimMinimum<R, C>>,
-    OMatrix<T, R, C>: Copy,
-    OVector<T, DimMinimum<R, C>>: Copy,
+    InnerOwned<T, R, C>: Copy,
+    InnerOwned<T, DimMinimum<R, C>>: Copy,
 {
+}
+*/
+
+impl<T: Clone, R: DimMin<C>, C: Dim> Clone for QR<T, R, C>
+where
+    DefaultAllocator: Allocator<T, R, C> + Allocator<T, DimMinimum<R, C>>,
+    InnerOwned<T, R, C>: Clone,
+    InnerOwned<T, DimMinimum<R, C>>: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            qr: self.qr.clone(),
+            diag: self.diag.clone(),
+        }
+    }
+}
+
+impl<T: fmt::Debug, R: DimMin<C>, C: Dim> fmt::Debug for QR<T, R, C>
+where
+    DefaultAllocator: Allocator<T, R, C> + Allocator<T, DimMinimum<R, C>>,
+    InnerOwned<T, R, C>: fmt::Debug,
+    InnerOwned<T, DimMinimum<R, C>>: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("QR")
+            .field("qr", &self.qr)
+            .field("diag", &self.diag)
+            .finish()
+    }
 }
 
 impl<T: ComplexField, R: DimMin<C>, C: Dim> QR<T, R, C>
@@ -54,18 +86,29 @@ where
         let (nrows, ncols) = matrix.data.shape();
         let min_nrows_ncols = nrows.min(ncols);
 
-        let mut diag =
-            unsafe { crate::unimplemented_or_uninitialized_generic!(min_nrows_ncols, Const::<1>) };
+        let mut diag = Matrix::new_uninitialized_generic(min_nrows_ncols, Const::<1>);
 
         if min_nrows_ncols.value() == 0 {
-            return QR { qr: matrix, diag };
+            return Self {
+                qr: matrix,
+                diag: unsafe { diag.assume_init() },
+            };
         }
 
         for i in 0..min_nrows_ncols.value() {
-            householder::clear_column_unchecked(&mut matrix, &mut diag[i], i, 0, None);
+            // Safety: the pointer is valid for writes, aligned, and uninitialized.
+            unsafe {
+                householder::clear_column_unchecked(&mut matrix, diag[i].as_mut_ptr(), i, 0, None);
+            }
         }
 
-        QR { qr: matrix, diag }
+        // Safety: all values have been initialized.
+        unsafe {
+            Self {
+                qr: matrix,
+                diag: diag.assume_init(),
+            }
+        }
     }
 
     /// Retrieves the upper trapezoidal submatrix `R` of this decomposition.

@@ -1,4 +1,4 @@
-use crate::base::{DimName, Scalar, ToTypenum, Vector, Vector2, Vector3};
+use crate::base::{DimName,  ToTypenum, Vector, Vector2, Vector3};
 use crate::storage::Storage;
 use typenum::{self, Cmp, Greater};
 
@@ -11,7 +11,7 @@ macro_rules! impl_swizzle {
                 #[must_use]
                 pub fn $name(&self) -> $Result<T>
                 where D::Typenum: Cmp<typenum::$BaseDim, Output=Greater> {
-                    $Result::new($(self[$i].inlined_clone()),*)
+                    $Result::new($(self[$i].clone()),*)
                 }
             )*
         )*
@@ -19,7 +19,7 @@ macro_rules! impl_swizzle {
 }
 
 /// # Swizzling
-impl<T: Scalar, D, S: Storage<T, D>> Vector<T, D, S>
+impl<T: Clone, D, S: Storage<T, D>> Vector<T, D, S>
 where
     D: DimName + ToTypenum,
 {

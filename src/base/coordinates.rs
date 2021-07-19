@@ -8,7 +8,7 @@ use std::ops::{Deref, DerefMut};
 
 use crate::base::dimension::{U1, U2, U3, U4, U5, U6};
 use crate::base::storage::{ContiguousStorage, ContiguousStorageMut};
-use crate::base::{Matrix, Scalar};
+use crate::base::Matrix;
 
 /*
  *
@@ -23,7 +23,7 @@ macro_rules! coords_impl(
         #[repr(C)]
         #[derive(Eq, PartialEq, Clone, Hash, Debug, Copy)]
         #[cfg_attr(feature = "serde-serialize-no-std", derive(Serialize, Deserialize))]
-        pub struct $T<T: Scalar> {
+        pub struct $T<T> {
             $(pub $comps: T),*
         }
     }
@@ -31,7 +31,7 @@ macro_rules! coords_impl(
 
 macro_rules! deref_impl(
     ($R: ty, $C: ty; $Target: ident) => {
-        impl<T: Scalar, S> Deref for Matrix<T, $R, $C, S>
+        impl<T, S> Deref for Matrix<T, $R, $C, S>
             where S: ContiguousStorage<T, $R, $C> {
             type Target = $Target<T>;
 
@@ -41,7 +41,7 @@ macro_rules! deref_impl(
             }
         }
 
-        impl<T: Scalar, S> DerefMut for Matrix<T, $R, $C, S>
+        impl<T, S> DerefMut for Matrix<T, $R, $C, S>
             where S: ContiguousStorageMut<T, $R, $C> {
             #[inline]
             fn deref_mut(&mut self) -> &mut Self::Target {

@@ -1,8 +1,8 @@
 use simba::simd::SimdValue;
 
-use crate::base::{OVector, Scalar};
-
+use crate::base::OVector;
 use crate::geometry::Point;
+use crate::Scalar;
 
 impl<T: Scalar + SimdValue, const D: usize> SimdValue for Point<T, D>
 where

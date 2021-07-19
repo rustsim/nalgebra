@@ -74,7 +74,7 @@ pub fn spadd_cs_prealloc<T>(
     a: Op<&CsMatrix<T>>,
 ) -> Result<(), OperationError>
 where
-    T: Scalar + ClosedAdd + ClosedMul + Zero + One,
+    T: Scalar + ClosedAdd + ClosedMul + Zero + One + PartialEq,
 {
     match a {
         Op::NoOp(a) => {
